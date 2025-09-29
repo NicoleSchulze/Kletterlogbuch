@@ -37,7 +37,7 @@ class DatabaseHelper {
   }
 
   // ------------------------------
-  // CRUD-Methoden für kletterwege
+  // CRUD-Methoden für Kletterwege
   // ------------------------------
 
 // Insert

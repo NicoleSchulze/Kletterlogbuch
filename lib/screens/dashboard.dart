@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/kletterweg.dart';
-import '../widgets/add_kletterweg.dart';
+import '../models/kletterweg_datenmodell.dart';
+import '../widgets/popup_add_kletterweg.dart';
 import '../database/database_helper.dart';
 
 /// --- Dashboard (Kletterlogbuch) ---
@@ -57,6 +57,7 @@ class _DashboardState extends State<Dashboard> {
       text: weg.schwierigkeit,
     );
 
+    // Diaglogfester öffnet sich wieder, wie bei Erstellen
     await showDialog(
       context: context,
       builder: (context) {
@@ -96,8 +97,7 @@ class _DashboardState extends State<Dashboard> {
             ElevatedButton(
               onPressed: () async {
                 final updatedWeg = Kletterweg(
-                  id: weg.id,
-                  // wichtig fürs Update
+                  id: weg.id, // wichtig fürs Update
                   datum: datumController.text,
                   gebiet: gebietController.text,
                   gipfel: gipfelController.text,
@@ -125,7 +125,7 @@ class _DashboardState extends State<Dashboard> {
     _loadKletterwege();
   }
 
-  //
+  /// Filterungen
   @override
   Widget build(BuildContext context) {
     // Gefilterte Liste erstellen: entweder alle Wege oder nur passende Schwierigkeit
@@ -168,8 +168,8 @@ class _DashboardState extends State<Dashboard> {
                 final weg = gefilterteWege[index];
                 return ListTile(
                   leading: const Icon(Icons.terrain),
-                  title: Text("${weg.datum} (${weg.schwierigkeit})"),
-                  subtitle: Text(weg.weg),
+                  title: Text("${weg.datum}: ${weg.gebiet}"),
+                  subtitle: Text("${weg.gipfel} – ${weg.weg} (${weg.schwierigkeit})"),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

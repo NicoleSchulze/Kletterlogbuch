@@ -15,8 +15,10 @@ class Dashboard extends StatefulWidget {
 
 // Definition State
 class _DashboardState extends State<Dashboard> {
-  final List<Kletterweg> _wege = [];
   String _filter = "Alle";
+
+  // Map für gruppierte Anzeige nach Datum + Gebiet
+  Map<String, List<KletterEintrag>> _eintraegeNachDatumUndGebiet = {};
 
   @override
   void initState() {
@@ -26,11 +28,29 @@ class _DashboardState extends State<Dashboard> {
 
   /// Alle Kletterwege aus der Datenbank laden
   Future<void> _loadKletterwege() async {
-    final data = await DatabaseHelper.instance.queryAllKletterwege();
-    setState(() {
-      _wege.clear();
-      _wege.addAll(data.map((e) => Kletterweg.fromMap(e)));
+    final data = await DatabaseHelper.instance.queryAllKletterEintraege();
+    final eintraegeListe = data.map((e) => KletterEintrag.fromMap(e)).toList();
+
+    // Gruppieren nach Datum + Gebiet
+    _eintraegeNachDatumUndGebiet.clear();
+
+    for (var eintrag in eintraegeListe) {
+      final key = "${eintrag.datum} – ${eintrag.gebiet}";
+      _eintraegeNachDatumUndGebiet.putIfAbsent(key, () => []).add(eintrag);
+    }
+
+    // Filter nach Schwierigkeit anwenden
+    if (_filter != "Alle") {
+    _eintraegeNachDatumUndGebiet.forEach((key, value) {
+    _eintraegeNachDatumUndGebiet[key] =
+    value.where((eintrag) => eintrag.schwierigkeit == _filter).toList();
     });
+    }
+
+    // Map bereinigen: leere Gruppen entfernen
+    _eintraegeNachDatumUndGebiet.removeWhere((key, value) => value.isEmpty);
+
+    setState(() {}); // UI aktualisieren
   }
 
   /// Kletterwege hinzufügen
@@ -39,23 +59,26 @@ class _DashboardState extends State<Dashboard> {
     showDialog(
       context: context,
       builder: (context) => AddKletterwegDialog(
-        onSave: (neuerWeg) async {
-          await DatabaseHelper.instance.insertKletterweg(neuerWeg.toMap());
-          _loadKletterwege(); // Liste aktualisieren
+        onSave: (KletterEintrag? neuerEintrag) async {
+          if (neuerEintrag != null) {
+            await DatabaseHelper.instance.insertKletterEintrag(
+              neuerEintrag.toMap(),
+            );
+            _loadKletterwege();
+          }
         },
       ),
     );
   }
 
   /// Kletterweg bearbeiten
-  Future<void> _editKletterweg(Kletterweg weg) async {
-    final datumController = TextEditingController(text: weg.datum);
-    final gebietController = TextEditingController(text: weg.gebiet);
-    final gipfelController = TextEditingController(text: weg.gipfel);
-    final wegController = TextEditingController(text: weg.weg);
-    final schwierigkeitController = TextEditingController(
-      text: weg.schwierigkeit,
-    );
+  Future<void> _editKletterweg(KletterEintrag eintrag) async {
+    final datumController = TextEditingController(text: eintrag.datum);
+
+    final gebietController = TextEditingController(text: eintrag.gebiet);
+    final gipfelController = TextEditingController(text: eintrag.gipfel);
+    final wegController = TextEditingController(text: eintrag.weg);
+    final schwierigkeitController = TextEditingController(text: eintrag.schwierigkeit);
 
     // Diaglogfester öffnet sich wieder, wie bei Erstellen
     await showDialog(
@@ -96,8 +119,8 @@ class _DashboardState extends State<Dashboard> {
             ),
             ElevatedButton(
               onPressed: () async {
-                final updatedWeg = Kletterweg(
-                  id: weg.id, // wichtig fürs Update
+                final updatedEintrag = KletterEintrag(
+                  id: eintrag.id,
                   datum: datumController.text,
                   gebiet: gebietController.text,
                   gipfel: gipfelController.text,
@@ -105,11 +128,9 @@ class _DashboardState extends State<Dashboard> {
                   schwierigkeit: schwierigkeitController.text,
                 );
 
-                await DatabaseHelper.instance.updateKletterweg(
-                  updatedWeg.toMap(),
-                );
+                await DatabaseHelper.instance.updateKletterEintrag(updatedEintrag.toMap());
                 Navigator.of(context).pop();
-                _loadKletterwege(); // Liste aktualisieren
+                _loadKletterwege(); // aktualisieren
               },
               child: const Text("Speichern"),
             ),
@@ -120,36 +141,26 @@ class _DashboardState extends State<Dashboard> {
   }
 
   /// Kletterweg löschen
-  Future<void> _deleteKletterweg(int id) async {
-    await DatabaseHelper.instance.deleteKletterweg(id);
+  Future<void> _deleteKletterEintrag(int id) async {
+    await DatabaseHelper.instance.deleteKletterEintrag(id);
     _loadKletterwege();
   }
 
   /// Filterungen
   @override
   Widget build(BuildContext context) {
-    // Gefilterte Liste erstellen: entweder alle Wege oder nur passende Schwierigkeit
-    final gefilterteWege = _filter == "Alle"
-        ? _wege
-        : _wege.where((weg) => weg.schwierigkeit == _filter).toList();
-
-    // Grundgerüst der Seite
     return Scaffold(
       appBar: AppBar(
-        // obere Leiste
         backgroundColor: Colors.green,
         title: const Text("Dashboard", style: TextStyle(color: Colors.white)),
         actions: [
-          // rechts: Filter Icon
           PopupMenuButton<String>(
             icon: const Icon(Icons.filter_list),
             onSelected: (value) {
-              setState(() {
-                _filter = value;
-              });
+              _filter = value;
+              _loadKletterwege(); // Filter anwenden
             },
             itemBuilder: (context) => const [
-              // Auswahlmöglichkeiten für Filter
               PopupMenuItem(value: "Alle", child: Text("Alle")),
               PopupMenuItem(value: "5a", child: Text("5a")),
               PopupMenuItem(value: "6a", child: Text("6a")),
@@ -158,37 +169,36 @@ class _DashboardState extends State<Dashboard> {
           ),
         ],
       ),
-      body:
-          gefilterteWege
-              .isEmpty // Prüfen, ob Liste leer ist
+      body: _eintraegeNachDatumUndGebiet.isEmpty
           ? const Center(child: Text("Noch keine Einträge"))
-          : ListView.builder(
-              itemCount: gefilterteWege.length,
-              itemBuilder: (context, index) {
-                final weg = gefilterteWege[index];
-                return ListTile(
-                  leading: const Icon(Icons.terrain),
-                  title: Text("${weg.datum}: ${weg.gebiet}"),
-                  subtitle: Text("${weg.gipfel} – ${weg.weg} (${weg.schwierigkeit})"),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // ✏️ Bearbeiten-Button
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => _editKletterweg(weg),
-                      ),
-                      // 🗑️ Löschen-Button
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () => _deleteKletterweg(weg.id!),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-      // Button + rechts unten
+          : ListView(
+        children: _eintraegeNachDatumUndGebiet.entries.map((entry) {
+          final datumUndGebiet = entry.key;
+          final eintraege = entry.value;
+
+          return ExpansionTile(
+            title: Text(datumUndGebiet),
+            children: eintraege.map((eintrag) {
+              return ListTile(
+                title: Text("${eintrag.gipfel} – ${eintrag.weg} (${eintrag.schwierigkeit})"),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () => _editKletterweg(eintrag),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () => _deleteKletterEintrag(eintrag.id!),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          );
+        }).toList(),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addKletterweg,
         child: const Icon(Icons.add),

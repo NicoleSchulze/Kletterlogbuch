@@ -2,7 +2,7 @@
 // Wie sieht Eintrag im Logbuch aus
 // Final = Werte sind unveränderbar
 // required = Werte müssen immer bei erstellen eingegeben werden
-class Kletterweg {
+class KletterEintrag {
   final int? id;
   final String datum;
   final String gebiet;
@@ -14,7 +14,7 @@ class Kletterweg {
   // this = zeigt auf das aktuelle Objekt selbst
   // this.datum = das datum, das im Kletterweg gespeichert ist oder this. gebiet auf das Gebiet
   // Meine Variable in der Klasse nicht nur Namen im Konstruktor
-  Kletterweg({
+  KletterEintrag({
     this.id,
     required this.datum,
     required this.gebiet,
@@ -36,8 +36,8 @@ class Kletterweg {
   }
 
 // Für SQLite laden
-  factory Kletterweg.fromMap(Map<String, dynamic> map) {
-    return Kletterweg(
+  factory KletterEintrag.fromMap(Map<String, dynamic> map) {
+    return KletterEintrag(
       id: map['id'],
       datum: map['datum'],
       gebiet: map['gebiet'],

@@ -5,7 +5,7 @@ import '../models/kletterweg_datenmodell.dart';
 /// --- Dialog zum Hinzufügen eines neuen Kletterwegs ---
 //Callback-Funktion, die aufgerufen wird, wenn der Benutzer speichert
 class AddKletterwegDialog extends StatefulWidget {
-  final Function(Kletterweg) onSave;
+  final Function(KletterEintrag) onSave;
 
   const AddKletterwegDialog({super.key, required this.onSave});
 
@@ -54,7 +54,7 @@ class _AddKletterwegDialogState extends State<AddKletterwegDialog> {
 
   // Schwierigkeit in römischen Zahlen direkt
   final List<String> schwierigkeitenListe = [
-    "I", "II", "III", "IV", "VI", "VIIa", "VIIb", "VIIc", "VIIIa", "VIIIb", "VIIIc",
+    "I", "II", "III", "IV", "V", "VI", "VIIa", "VIIb", "VIIc", "VIIIa", "VIIIb", "VIIIc",
     "IXa", "IXb", "IXc", "Xa", "Xb", "Xc", "XIa", "XIb", "XIc",
   ];
 
@@ -72,7 +72,7 @@ class _AddKletterwegDialogState extends State<AddKletterwegDialog> {
       return;
 
     widget.onSave(
-      Kletterweg(
+      KletterEintrag(
         datum: datum,
         gebiet: gebiet,
         gipfel: gipfel,

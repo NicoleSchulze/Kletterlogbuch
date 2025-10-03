@@ -19,45 +19,50 @@ class DatabaseHelper {
 
     print("📂 Datenbank gespeichert unter: $path");
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    // Datenbank öffnen oder erstellen
+    final db = await openDatabase(
+      path,
+      version: 1,
+      onOpen: (db) async {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS klettereintraege(
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            datum TEXT NOT NULL,
+            gebiet TEXT NOT NULL,
+            gipfel TEXT NOT NULL,
+            weg TEXT NOT NULL,
+            schwierigkeit TEXT NOT NULL
+          )
+        ''');
+      },
+    );
+
+    return db;
   }
 
-  //Tabelle erstellen
-  Future<void> _createDB(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE kletterwege(
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        datum TEXT NOT NULL,
-        gebiet TEXT NOT NULL,
-        gipfel TEXT NOT NULL,
-        weg TEXT NOT NULL,
-        schwierigkeit TEXT NOT NULL
-      )
-    ''');
-  }
 
   // ------------------------------
-  // CRUD-Methoden für Kletterwege
+  // CRUD-Methoden für Klettereintrag
   // ------------------------------
 
-// Insert
-  Future<int> insertKletterweg(Map<String, dynamic> row) async {
+  // Insert
+  Future<int> insertKletterEintrag(Map<String, dynamic> row) async {
     final db = await instance.database;
-    return await db.insert('kletterwege', row);
+    return await db.insert('klettereintraege', row);
   }
 
   // Query All
-  Future<List<Map<String, dynamic>>> queryAllKletterwege() async {
+  Future<List<Map<String, dynamic>>> queryAllKletterEintraege() async {
     final db = await instance.database;
-    return await db.query('kletterwege');
+    return await db.query('klettereintraege');
   }
 
   // Update
-  Future<int> updateKletterweg(Map<String, dynamic> row) async {
+  Future<int> updateKletterEintrag(Map<String, dynamic> row) async {
     final db = await instance.database;
     int id = row['id'];
     return await db.update(
-      'kletterwege',
+      'klettereintraege',
       row,
       where: 'id = ?',
       whereArgs: [id],
@@ -65,10 +70,10 @@ class DatabaseHelper {
   }
 
   // Delete
-  Future<int> deleteKletterweg(int id) async {
+  Future<int> deleteKletterEintrag(int id) async {
     final db = await instance.database;
     return await db.delete(
-      'kletterwege',
+      'klettereintraege',
       where: 'id = ?',
       whereArgs: [id],
     );

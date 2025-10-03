@@ -18,7 +18,7 @@ class _DashboardState extends State<Dashboard> {
   String _filter = "Alle";
 
   // Map für gruppierte Anzeige nach Datum + Gebiet
-  Map<String, List<KletterEintrag>> _eintraegeNachDatumUndGebiet = {};
+  Map<String, Map<String, List<KletterEintrag>>> _eintraegeNachDatumGebietGipfel = {};
 
   @override
   void initState() {
@@ -31,24 +31,22 @@ class _DashboardState extends State<Dashboard> {
     final data = await DatabaseHelper.instance.queryAllKletterEintraege();
     final eintraegeListe = data.map((e) => KletterEintrag.fromMap(e)).toList();
 
-    // Gruppieren nach Datum + Gebiet
-    _eintraegeNachDatumUndGebiet.clear();
+    _eintraegeNachDatumGebietGipfel.clear();
 
     for (var eintrag in eintraegeListe) {
-      final key = "${eintrag.datum} – ${eintrag.gebiet}";
-      _eintraegeNachDatumUndGebiet.putIfAbsent(key, () => []).add(eintrag);
-    }
+      if (_filter != "Alle" && eintrag.schwierigkeit != _filter) continue;
 
-    // Filter nach Schwierigkeit anwenden
-    if (_filter != "Alle") {
-    _eintraegeNachDatumUndGebiet.forEach((key, value) {
-    _eintraegeNachDatumUndGebiet[key] =
-    value.where((eintrag) => eintrag.schwierigkeit == _filter).toList();
-    });
-    }
+      final keyDatumGebiet = "${eintrag.datum} – ${eintrag.gebiet}";
+      final keyGipfel = eintrag.gipfel;
 
-    // Map bereinigen: leere Gruppen entfernen
-    _eintraegeNachDatumUndGebiet.removeWhere((key, value) => value.isEmpty);
+      // Map für Datum+Gebiet anlegen
+      _eintraegeNachDatumGebietGipfel.putIfAbsent(keyDatumGebiet, () => {});
+      final gipfelMap = _eintraegeNachDatumGebietGipfel[keyDatumGebiet]!;
+
+      // Liste für Gipfel anlegen
+      gipfelMap.putIfAbsent(keyGipfel, () => []);
+      gipfelMap[keyGipfel]!.add(eintrag);
+      }
 
     setState(() {}); // UI aktualisieren
   }
@@ -169,31 +167,39 @@ class _DashboardState extends State<Dashboard> {
           ),
         ],
       ),
-      body: _eintraegeNachDatumUndGebiet.isEmpty
+      body: _eintraegeNachDatumGebietGipfel.isEmpty
           ? const Center(child: Text("Noch keine Einträge"))
           : ListView(
-        children: _eintraegeNachDatumUndGebiet.entries.map((entry) {
-          final datumUndGebiet = entry.key;
-          final eintraege = entry.value;
+        children: _eintraegeNachDatumGebietGipfel.entries.map((datumEntry) {
+          final datumUndGebiet = datumEntry.key;
+          final gipfelMap = datumEntry.value;
 
           return ExpansionTile(
             title: Text(datumUndGebiet),
-            children: eintraege.map((eintrag) {
-              return ListTile(
-                title: Text("${eintrag.gipfel} – ${eintrag.weg} (${eintrag.schwierigkeit})"),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () => _editKletterweg(eintrag),
+            children: gipfelMap.entries.map((gipfelEntry) {
+              final gipfel = gipfelEntry.key;
+              final eintraege = gipfelEntry.value;
+
+              return ExpansionTile(
+                title: Text(gipfel),
+                children: eintraege.map((eintrag) {
+                  return ListTile(
+                    title: Text("${eintrag.weg} (${eintrag.schwierigkeit})"),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          onPressed: () => _editKletterweg(eintrag),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: () => _deleteKletterEintrag(eintrag.id!),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.delete),
-                      onPressed: () => _deleteKletterEintrag(eintrag.id!),
-                    ),
-                  ],
-                ),
+                  );
+                }).toList(),
               );
             }).toList(),
           );

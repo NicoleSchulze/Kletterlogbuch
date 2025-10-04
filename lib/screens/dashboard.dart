@@ -34,8 +34,6 @@ class _DashboardState extends State<Dashboard> {
     _eintraegeNachDatumGebietGipfel.clear();
 
     for (var eintrag in eintraegeListe) {
-      if (_filter != "Alle" && eintrag.schwierigkeit != _filter) continue;
-
       final keyDatumGebiet = "${eintrag.datum} – ${eintrag.gebiet}";
       final keyGipfel = eintrag.gipfel;
 
@@ -44,6 +42,17 @@ class _DashboardState extends State<Dashboard> {
           .putIfAbsent(keyGipfel, () => [])
           .add(eintrag);
     }
+
+    // Sortieren nach Datum absteigend (neueste zuerst)
+    final sortedKeys = _eintraegeNachDatumGebietGipfel.keys.toList()
+      ..sort((a, b) {
+        final dateA = DateTime.parse(a.split(' – ')[0].split('.').reversed.join('-'));
+        final dateB = DateTime.parse(b.split(' – ')[0].split('.').reversed.join('-'));
+        return dateB.compareTo(dateA); // b.compareTo(a) für absteigend
+      });
+
+    final sortedMap = { for (var k in sortedKeys) k: _eintraegeNachDatumGebietGipfel[k]! };
+    _eintraegeNachDatumGebietGipfel = sortedMap;
 
     setState(() {});
   }
@@ -167,75 +176,83 @@ class _DashboardState extends State<Dashboard> {
           ? const Center(child: Text("Noch keine Einträge"))
           : ListView(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        children: _eintraegeNachDatumGebietGipfel.entries.map((datumEntry) {
-          final datumUndGebiet = datumEntry.key;
-          final gipfelMap = datumEntry.value;
+        children: [
+          for (int index = 0; index < _eintraegeNachDatumGebietGipfel.keys.length; index++)
+            Builder(
+              builder: (context) {
+                final datumUndGebiet = _eintraegeNachDatumGebietGipfel.keys.elementAt(index);
+                final gipfelMap = _eintraegeNachDatumGebietGipfel[datumUndGebiet]!;
 
-          return Card(
-            elevation: 2,
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Datum + Gebiet
-                  Text(
-                    datumUndGebiet.replaceFirst(' – ', ': '),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
+                // Nummerierung invertiert: ältester = 1, neuester = letzte Zahl
+                final tagNummer = _eintraegeNachDatumGebietGipfel.keys.length - index;
+
+                return Card(
+                  elevation: 2,
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Datum + Gebiet mit Nummerierung
+                        Text(
+                          "$tagNummer) ${datumUndGebiet.replaceFirst(' – ', ': ')}",
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        ...gipfelMap.entries.map((gipfelEntry) {
+                          final gipfel = gipfelEntry.key;
+                          final wege = gipfelEntry.value;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 4, left: 6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.filter_hdr, color: Colors.grey, size: 18),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      gipfel,
+                                      style: const TextStyle(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                ...wege.map((eintrag) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(left: 22, top: 1),
+                                    child: Text(
+                                      "→ ${eintrag.weg} (${eintrag.schwierigkeit})",
+                                      style: const TextStyle(
+                                        fontSize: 13.5,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  ...gipfelMap.entries.map((gipfelEntry) {
-                    final gipfel = gipfelEntry.key;
-                    final wege = gipfelEntry.value;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 4, left: 6),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.filter_hdr, color: Colors.grey, size: 18),
-                              const SizedBox(width: 4),
-                              Text(
-                                gipfel,
-                                style: const TextStyle(
-                                  fontSize: 14.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                            ],
-                          ),
-                          ...wege.map((eintrag) {
-                            return Padding(
-                              padding: const EdgeInsets.only(left: 22, top: 1),
-                              child: Text(
-                                "→ ${eintrag.weg} (${eintrag.schwierigkeit})",
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
-              ),
+                );
+              },
             ),
-          );
-        }).toList(),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addKletterweg,

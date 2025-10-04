@@ -40,7 +40,6 @@ class DatabaseHelper {
     return db;
   }
 
-
   // ------------------------------
   // CRUD-Methoden für Klettereintrag
   // ------------------------------

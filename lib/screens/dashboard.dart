@@ -39,16 +39,13 @@ class _DashboardState extends State<Dashboard> {
       final keyDatumGebiet = "${eintrag.datum} – ${eintrag.gebiet}";
       final keyGipfel = eintrag.gipfel;
 
-      // Map für Datum+Gebiet anlegen
       _eintraegeNachDatumGebietGipfel.putIfAbsent(keyDatumGebiet, () => {});
-      final gipfelMap = _eintraegeNachDatumGebietGipfel[keyDatumGebiet]!;
+      _eintraegeNachDatumGebietGipfel[keyDatumGebiet]!
+          .putIfAbsent(keyGipfel, () => [])
+          .add(eintrag);
+    }
 
-      // Liste für Gipfel anlegen
-      gipfelMap.putIfAbsent(keyGipfel, () => []);
-      gipfelMap[keyGipfel]!.add(eintrag);
-      }
-
-    setState(() {}); // UI aktualisieren
+    setState(() {});
   }
 
   /// Kletterwege hinzufügen
@@ -72,7 +69,6 @@ class _DashboardState extends State<Dashboard> {
   /// Kletterweg bearbeiten
   Future<void> _editKletterweg(KletterEintrag eintrag) async {
     final datumController = TextEditingController(text: eintrag.datum);
-
     final gebietController = TextEditingController(text: eintrag.gebiet);
     final gipfelController = TextEditingController(text: eintrag.gipfel);
     final wegController = TextEditingController(text: eintrag.weg);
@@ -170,38 +166,74 @@ class _DashboardState extends State<Dashboard> {
       body: _eintraegeNachDatumGebietGipfel.isEmpty
           ? const Center(child: Text("Noch keine Einträge"))
           : ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         children: _eintraegeNachDatumGebietGipfel.entries.map((datumEntry) {
           final datumUndGebiet = datumEntry.key;
           final gipfelMap = datumEntry.value;
 
-          return ExpansionTile(
-            title: Text(datumUndGebiet),
-            children: gipfelMap.entries.map((gipfelEntry) {
-              final gipfel = gipfelEntry.key;
-              final eintraege = gipfelEntry.value;
-
-              return ExpansionTile(
-                title: Text(gipfel),
-                children: eintraege.map((eintrag) {
-                  return ListTile(
-                    title: Text("${eintrag.weg} (${eintrag.schwierigkeit})"),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () => _editKletterweg(eintrag),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () => _deleteKletterEintrag(eintrag.id!),
-                        ),
-                      ],
+          return Card(
+            elevation: 2,
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Datum + Gebiet
+                  Text(
+                    datumUndGebiet.replaceFirst(' – ', ': '),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
                     ),
-                  );
-                }).toList(),
-              );
-            }).toList(),
+                  ),
+                  const SizedBox(height: 4),
+                  ...gipfelMap.entries.map((gipfelEntry) {
+                    final gipfel = gipfelEntry.key;
+                    final wege = gipfelEntry.value;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 4, left: 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.filter_hdr, color: Colors.grey, size: 18),
+                              const SizedBox(width: 4),
+                              Text(
+                                gipfel,
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                          ...wege.map((eintrag) {
+                            return Padding(
+                              padding: const EdgeInsets.only(left: 22, top: 1),
+                              child: Text(
+                                "→ ${eintrag.weg} (${eintrag.schwierigkeit})",
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
           );
         }).toList(),
       ),

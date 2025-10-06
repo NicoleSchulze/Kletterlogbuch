@@ -1,14 +1,30 @@
+import 'package:hive/hive.dart';
+
+part 'kletterweg_datenmodell.g.dart'; // Für generierten Adapter
+
 /// --- Datenmodell ---
 // Wie sieht Eintrag im Logbuch aus
 // Final = Werte sind unveränderbar
 // required = Werte müssen immer bei erstellen eingegeben werden
-class KletterEintrag {
-  final int? id;
-  final String datum;
-  final String gebiet;
-  final String gipfel;
-  final String weg;
-  final String schwierigkeit;
+@HiveType(typeId: 0)
+class KletterEintrag extends HiveObject {
+  @HiveField(0)
+  int? id;
+
+  @HiveField(1)
+  String datum;
+
+  @HiveField(2)
+  String gebiet;
+
+  @HiveField(3)
+  String gipfel;
+
+  @HiveField(4)
+  String weg;
+
+  @HiveField(5)
+  String schwierigkeit;
 
   // Konstruktor um neue Objekte erzeugen zu können
   // this = zeigt auf das aktuelle Objekt selbst

@@ -1,38 +1,57 @@
 <!DOCTYPE html>
-<html>
+<html lang="">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
+    <base href="$FLUTTER_BASE_HREF">
 
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
+    <meta charset="UTF-8">
+    <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+    <meta name="description" content="Kletterlogbuch Progressive Web App">
 
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Kletterlogbuch">
+    <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
+    <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="flutter_kletterlogbuch">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>flutter_kletterlogbuch</title>
-  <link rel="manifest" href="manifest.json">
+    <title>Kletterlogbuch</title>
+    <meta name="theme-color" content="#2E7D32">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+    <div id="install-banner"
+         style="display:none; position:fixed; bottom:20px; left:20px; background:#2196f3; color:white; padding:15px; border-radius:8px; z-index:1000;">
+        <span>Installiere unsere App für schnellen Zugriff!</span>
+        <button id="install-btn" style="margin-left:10px; padding:5px 10px;">Installieren</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const banner = document.getElementById('install-banner');
+            const btn = document.getElementById('install-btn');
+            if (!banner || !btn) return;
+
+            let deferredPrompt;
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                banner.style.display = 'block';
+            });
+
+            btn.addEventListener('click', async () => {
+                banner.style.display = 'none';
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const {outcome} = await deferredPrompt.userChoice;
+                    console.log(`User response: ${outcome}`);
+                    deferredPrompt = null;
+                }
+            });
+        });
+    </script>
+
+    <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

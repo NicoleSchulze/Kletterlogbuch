@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/kletterweg_datenmodell.dart';
 import '../widgets/popup_add_kletterweg.dart';
-import '../database/database_helper.dart';
+import '../database/hive_database_helper.dart';
 
 /// --- Dashboard (Kletterlogbuch) ---
 // Neues Widget definieren
@@ -28,8 +28,7 @@ class _DashboardState extends State<Dashboard> {
 
   /// Alle Kletterwege aus der Datenbank laden
   Future<void> _loadKletterwege() async {
-    final data = await DatabaseHelper.instance.queryAllKletterEintraege();
-    final eintraegeListe = data.map((e) => KletterEintrag.fromMap(e)).toList();
+    final eintraegeListe = HiveDatabaseHelper.queryAllKletterEintraege();
 
     _eintraegeNachDatumGebietGipfel.clear();
 
@@ -63,13 +62,9 @@ class _DashboardState extends State<Dashboard> {
     showDialog(
       context: context,
       builder: (context) => AddKletterwegDialog(
-        onSave: (KletterEintrag? neuerEintrag) async {
-          if (neuerEintrag != null) {
-            await DatabaseHelper.instance.insertKletterEintrag(
-              neuerEintrag.toMap(),
-            );
-            _loadKletterwege();
-          }
+        onSave: (KletterEintrag neuerEintrag) async {
+          await HiveDatabaseHelper.insertKletterEintrag(neuerEintrag);
+          _loadKletterwege();
         },
       ),
     );
@@ -131,7 +126,7 @@ class _DashboardState extends State<Dashboard> {
                   schwierigkeit: schwierigkeitController.text,
                 );
 
-                await DatabaseHelper.instance.updateKletterEintrag(updatedEintrag.toMap());
+                await HiveDatabaseHelper.updateKletterEintrag(updatedEintrag);
                 Navigator.of(context).pop();
                 _loadKletterwege(); // aktualisieren
               },
@@ -144,8 +139,8 @@ class _DashboardState extends State<Dashboard> {
   }
 
   /// Kletterweg löschen
-  Future<void> _deleteKletterEintrag(int id) async {
-    await DatabaseHelper.instance.deleteKletterEintrag(id);
+  Future<void> _deleteKletterEintrag(KletterEintrag eintrag) async {
+    await HiveDatabaseHelper.deleteKletterEintrag(eintrag);
     _loadKletterwege();
   }
 

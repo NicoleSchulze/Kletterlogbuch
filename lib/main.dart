@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:hive_flutter/hive_flutter.dart';       // Hive initialisieren & verwenden
+import 'models/kletterweg_datenmodell.dart';
 
 
 /// Starte meine App und zeige das Widget MyApp
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Hive.initFlutter(); // Hive initialisieren
+  Hive.registerAdapter(KletterEintragAdapter()); // Adapter registrieren
+  await Hive.openBox<KletterEintrag>('klettereintraege');
+
   runApp(const MyApp());
 }
 

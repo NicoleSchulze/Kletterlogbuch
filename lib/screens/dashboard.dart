@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/kletterweg_datenmodell.dart';
 import '../widgets/popup_add_kletterweg.dart';
 import '../database/hive_database_helper.dart';
+import '../widgets/popup_einzel_filter.dart';
 
 /// --- Dashboard (Kletterlogbuch) ---
 // Neues Widget definieren
@@ -15,7 +16,14 @@ class Dashboard extends StatefulWidget {
 
 // Definition State
 class _DashboardState extends State<Dashboard> {
-  String _filter = "Alle";
+  Map<String, dynamic> _filterMap = {
+    "datum": null,
+    "gebiet": null,
+    "gipfel": null,
+    "weg": null,
+    "schwierigkeit": null,
+  };
+
 
   // Map für gruppierte Anzeige nach Datum + Gebiet
   Map<String, Map<String, List<KletterEintrag>>> _eintraegeNachDatumGebietGipfel = {};
@@ -30,30 +38,50 @@ class _DashboardState extends State<Dashboard> {
   Future<void> _loadKletterwege() async {
     final eintraegeListe = HiveDatabaseHelper.queryAllKletterEintraege();
 
-    _eintraegeNachDatumGebietGipfel.clear();
+    // 1️⃣ Gefilterte Liste anhand _filterMap
+    final gefiltert = eintraegeListe.where((e) {
+      bool match = true;
 
-    for (var eintrag in eintraegeListe) {
+      if (_filterMap["datum"] != null && _filterMap["datum"]!.isNotEmpty)
+        match &= e.datum == _filterMap["datum"];
+      if (_filterMap["gebiet"] != null && _filterMap["gebiet"]!.isNotEmpty)
+        match &= e.gebiet == _filterMap["gebiet"];
+      if (_filterMap["gipfel"] != null && _filterMap["gipfel"]!.isNotEmpty)
+        match &= e.gipfel.contains(_filterMap["gipfel"]!);
+      if (_filterMap["weg"] != null && _filterMap["weg"]!.isNotEmpty)
+        match &= e.weg.contains(_filterMap["weg"]!);
+      if (_filterMap["schwierigkeit"] != null && _filterMap["schwierigkeit"]!.isNotEmpty)
+        match &= e.schwierigkeit == _filterMap["schwierigkeit"];
+
+      return match;
+    }).toList();
+
+    // 2️⃣ Map aufbauen für ListView
+    Map<String, Map<String, List<KletterEintrag>>> tempMap = {};
+    for (var eintrag in gefiltert) {
       final keyDatumGebiet = "${eintrag.datum} – ${eintrag.gebiet}";
       final keyGipfel = eintrag.gipfel;
 
-      _eintraegeNachDatumGebietGipfel.putIfAbsent(keyDatumGebiet, () => {});
-      _eintraegeNachDatumGebietGipfel[keyDatumGebiet]!
-          .putIfAbsent(keyGipfel, () => [])
-          .add(eintrag);
+      tempMap.putIfAbsent(keyDatumGebiet, () => {});
+      tempMap[keyDatumGebiet]!.putIfAbsent(keyGipfel, () => []);
+      tempMap[keyDatumGebiet]![keyGipfel]!.add(eintrag);
     }
 
-    // Sortieren nach Datum absteigend (neueste zuerst)
-    final sortedKeys = _eintraegeNachDatumGebietGipfel.keys.toList()
+    // 3️⃣ Sortieren nach Datum absteigend
+    final sortedKeys = tempMap.keys.toList()
       ..sort((a, b) {
         final dateA = DateTime.parse(a.split(' – ')[0].split('.').reversed.join('-'));
         final dateB = DateTime.parse(b.split(' – ')[0].split('.').reversed.join('-'));
-        return dateB.compareTo(dateA); // b.compareTo(a) für absteigend
+        return dateB.compareTo(dateA);
       });
 
-    final sortedMap = { for (var k in sortedKeys) k: _eintraegeNachDatumGebietGipfel[k]! };
-    _eintraegeNachDatumGebietGipfel = sortedMap;
+    final sortedMap = { for (var k in sortedKeys) k: tempMap[k]! };
 
-    setState(() {});
+    // 4️⃣ In setState einfügen, damit UI neu baut
+    setState(() {
+      _eintraegeNachDatumGebietGipfel.clear();
+      _eintraegeNachDatumGebietGipfel.addAll(sortedMap);
+    });
   }
 
   /// Kletterwege hinzufügen
@@ -154,15 +182,36 @@ class _DashboardState extends State<Dashboard> {
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.filter_list),
-            onSelected: (value) {
-              _filter = value;
-              _loadKletterwege(); // Filter anwenden
+            onSelected: (filterKategorie) {
+              if (filterKategorie == "alle") {
+                // Alle Filter zurücksetzen
+                setState(() {
+                  _filterMap.updateAll((key, value) => null);
+                });
+                _loadKletterwege(); // Einträge neu laden
+              } else {
+                // Dialog für die ausgewählte Kategorie öffnen
+                showDialog(
+                  context: context,
+                  builder: (_) => KletterwegEinzelFilterDialog(
+                    filterKategorie: filterKategorie,
+                    onApply: (filterMap) {
+                      setState(() {
+                        _filterMap = filterMap; // Filtermap übernehmen
+                      });
+                      _loadKletterwege(); // gefilterte Einträge laden
+                    },
+                  ),
+                );
+              }
             },
             itemBuilder: (context) => const [
-              PopupMenuItem(value: "Alle", child: Text("Alle")),
-              PopupMenuItem(value: "5a", child: Text("5a")),
-              PopupMenuItem(value: "6a", child: Text("6a")),
-              PopupMenuItem(value: "7a", child: Text("7a")),
+              PopupMenuItem(value: "alle", child: Text("Alle anzeigen")), // ganz oben
+              PopupMenuItem(value: "datum", child: Text("Datum")),
+              PopupMenuItem(value: "gebiet", child: Text("Gebiet")),
+              PopupMenuItem(value: "gipfel", child: Text("Gipfel")),
+              PopupMenuItem(value: "weg", child: Text("Weg")),
+              PopupMenuItem(value: "schwierigkeit", child: Text("Schwierigkeit")),
             ],
           ),
         ],

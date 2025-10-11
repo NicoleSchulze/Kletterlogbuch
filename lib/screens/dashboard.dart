@@ -24,9 +24,11 @@ class _DashboardState extends State<Dashboard> {
     "schwierigkeit": null,
   };
 
-
   // Map für gruppierte Anzeige nach Datum + Gebiet
   Map<String, Map<String, List<KletterEintrag>>> _eintraegeNachDatumGebietGipfel = {};
+
+  bool _deleteMode = false; // true, wenn Auswahlmodus aktiv
+  Set<String> _selectedDatumGebietKeys = {}; // markierte Cards (Datum + Gebiet)
 
   @override
   void initState() {
@@ -166,54 +168,81 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  /// Kletterweg löschen
-  Future<void> _deleteKletterEintrag(KletterEintrag eintrag) async {
-    await HiveDatabaseHelper.deleteKletterEintrag(eintrag);
-    _loadKletterwege();
-  }
-
   /// Filterungen
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.green,
         title: const Text("Dashboard", style: TextStyle(color: Colors.white)),
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.filter_list),
-            onSelected: (filterKategorie) {
-              if (filterKategorie == "alle") {
-                // Alle Filter zurücksetzen
-                setState(() {
-                  _filterMap.updateAll((key, value) => null);
-                });
-                _loadKletterwege(); // Einträge neu laden
+          IconButton(
+            icon: Icon(_deleteMode ? Icons.check : Icons.delete),
+            tooltip: _deleteMode
+                ? (_selectedDatumGebietKeys.isEmpty ? "Keine Auswahl, Löschmodus beenden" : "Ausgewählte Einträge löschen")
+                : "Einträge auswählen zum Löschen",
+            onPressed: () async {
+              if (_deleteMode) {
+                if (_selectedDatumGebietKeys.isEmpty) {
+                  setState(() => _deleteMode = false);
+                  return;
+                }
+                for (var key in _selectedDatumGebietKeys) {
+                  final gipfelMap = _eintraegeNachDatumGebietGipfel[key]!;
+                  for (var wege in gipfelMap.values) {
+                    for (var eintrag in wege) {
+                      await HiveDatabaseHelper.deleteKletterEintrag(eintrag);
+                    }
+                  }
+                }
+                _selectedDatumGebietKeys.clear();
+                setState(() => _deleteMode = false);
+                _loadKletterwege();
               } else {
-                // Dialog für die ausgewählte Kategorie öffnen
-                showDialog(
-                  context: context,
-                  builder: (_) => KletterwegEinzelFilterDialog(
-                    filterKategorie: filterKategorie,
-                    onApply: (filterMap) {
-                      setState(() {
-                        _filterMap = filterMap; // Filtermap übernehmen
-                      });
-                      _loadKletterwege(); // gefilterte Einträge laden
-                    },
-                  ),
-                );
+                setState(() {
+                  _deleteMode = true;
+                  _selectedDatumGebietKeys.clear();
+                });
               }
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: "alle", child: Text("Alle anzeigen")), // ganz oben
-              PopupMenuItem(value: "datum", child: Text("Datum")),
-              PopupMenuItem(value: "gebiet", child: Text("Gebiet")),
-              PopupMenuItem(value: "gipfel", child: Text("Gipfel")),
-              PopupMenuItem(value: "weg", child: Text("Weg")),
-              PopupMenuItem(value: "schwierigkeit", child: Text("Schwierigkeit")),
-            ],
           ),
+          Tooltip(
+            message: "Filtermenü anzeigen",
+            child: IconButton(
+              icon: const Icon(Icons.filter_list),
+              onPressed: () {
+                showMenu<String>(
+                  context: context,
+                  position: RelativeRect.fromLTRB(100, 80, 0, 0), // Position über dem Icon anpassen
+                  items: const [
+                    PopupMenuItem(value: "alle", child: Text("Alle anzeigen")),
+                    PopupMenuItem(value: "datum", child: Text("Datum")),
+                    PopupMenuItem(value: "gebiet", child: Text("Gebiet")),
+                    PopupMenuItem(value: "gipfel", child: Text("Gipfel")),
+                    PopupMenuItem(value: "weg", child: Text("Weg")),
+                    PopupMenuItem(value: "schwierigkeit", child: Text("Schwierigkeit")),
+                  ],
+                ).then((value) {
+                  if (value == null) return;
+
+                  if (value == "alle") {
+                    setState(() => _filterMap.updateAll((key, value) => null));
+                    _loadKletterwege();
+                  } else {
+                    showDialog(
+                      context: context,
+                      builder: (_) => KletterwegEinzelFilterDialog(
+                        filterKategorie: value,
+                        onApply: (filterMap) {
+                          setState(() => _filterMap = filterMap);
+                          _loadKletterwege();
+                        },
+                      ),
+                    );
+                  }
+                });
+              },
+            ),
+          )
         ],
       ),
       body: _eintraegeNachDatumGebietGipfel.isEmpty
@@ -226,71 +255,85 @@ class _DashboardState extends State<Dashboard> {
               builder: (context) {
                 final datumUndGebiet = _eintraegeNachDatumGebietGipfel.keys.elementAt(index);
                 final gipfelMap = _eintraegeNachDatumGebietGipfel[datumUndGebiet]!;
-
-                // Nummerierung invertiert: ältester = 1, neuester = letzte Zahl
                 final tagNummer = _eintraegeNachDatumGebietGipfel.keys.length - index;
+                final isSelected = _selectedDatumGebietKeys.contains(datumUndGebiet);
 
-                return Card(
-                  elevation: 2,
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Datum + Gebiet mit Nummerierung
-                        Text(
-                          "$tagNummer) ${datumUndGebiet.replaceFirst(' – ', ': ')}",
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        ...gipfelMap.entries.map((gipfelEntry) {
-                          final gipfel = gipfelEntry.key;
-                          final wege = gipfelEntry.value;
-
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 4, left: 6),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.filter_hdr, color: Colors.grey, size: 18),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      gipfel,
-                                      style: const TextStyle(
-                                        fontSize: 14.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                ...wege.map((eintrag) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(left: 22, top: 1),
-                                    child: Text(
-                                      "→ ${eintrag.weg} (${eintrag.schwierigkeit})",
-                                      style: const TextStyle(
-                                        fontSize: 13.5,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ],
+                return InkWell(
+                  onTap: _deleteMode
+                      ? () {
+                    setState(() {
+                      if (isSelected) {
+                        _selectedDatumGebietKeys.remove(datumUndGebiet);
+                      } else {
+                        _selectedDatumGebietKeys.add(datumUndGebiet);
+                      }
+                    });
+                  }
+                      : null,
+                  child: Card(
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.green.withOpacity(0.2) : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "$tagNummer) ${datumUndGebiet.replaceFirst(' – ', ': ')}",
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
                             ),
-                          );
-                        }),
-                      ],
+                          ),
+                          const SizedBox(height: 4),
+                          ...gipfelMap.entries.map((gipfelEntry) {
+                            final gipfel = gipfelEntry.key;
+                            final wege = gipfelEntry.value;
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4, left: 6),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.filter_hdr, color: Colors.grey, size: 18),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        gipfel,
+                                        style: const TextStyle(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  ...wege.map((eintrag) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(left: 22, top: 1),
+                                      child: Text(
+                                        "→ ${eintrag.weg} (${eintrag.schwierigkeit})",
+                                        style: const TextStyle(
+                                          fontSize: 13.5,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
                     ),
                   ),
                 );

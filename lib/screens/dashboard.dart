@@ -27,6 +27,9 @@ class _DashboardState extends State<Dashboard> {
   // Map für gruppierte Anzeige nach Datum + Gebiet
   Map<String, Map<String, List<KletterEintrag>>> _eintraegeNachDatumGebietGipfel = {};
 
+  bool _editMode = false;
+  final Map<int, Map<String, TextEditingController>> _controllers = {};
+
   bool _deleteMode = false; // true, wenn Auswahlmodus aktiv
   Set<String> _selectedDatumGebietKeys = {}; // markierte Cards (Datum + Gebiet)
 
@@ -175,36 +178,6 @@ class _DashboardState extends State<Dashboard> {
         backgroundColor: Colors.green,
         title: const Text("Dashboard", style: TextStyle(color: Colors.white)),
         actions: [
-          IconButton(
-            icon: Icon(_deleteMode ? Icons.check : Icons.delete),
-            tooltip: _deleteMode
-                ? (_selectedDatumGebietKeys.isEmpty ? "Keine Auswahl, Löschmodus beenden" : "Ausgewählte Einträge löschen")
-                : "Einträge auswählen zum Löschen",
-            onPressed: () async {
-              if (_deleteMode) {
-                if (_selectedDatumGebietKeys.isEmpty) {
-                  setState(() => _deleteMode = false);
-                  return;
-                }
-                for (var key in _selectedDatumGebietKeys) {
-                  final gipfelMap = _eintraegeNachDatumGebietGipfel[key]!;
-                  for (var wege in gipfelMap.values) {
-                    for (var eintrag in wege) {
-                      await HiveDatabaseHelper.deleteKletterEintrag(eintrag);
-                    }
-                  }
-                }
-                _selectedDatumGebietKeys.clear();
-                setState(() => _deleteMode = false);
-                _loadKletterwege();
-              } else {
-                setState(() {
-                  _deleteMode = true;
-                  _selectedDatumGebietKeys.clear();
-                });
-              }
-            },
-          ),
           Tooltip(
             message: "Filtermenü anzeigen",
             child: IconButton(
@@ -242,7 +215,72 @@ class _DashboardState extends State<Dashboard> {
                 });
               },
             ),
-          )
+          ),
+          IconButton(
+            icon: Icon(_editMode ? Icons.check : Icons.edit),
+            tooltip: _editMode ? "Bearbeitung speichern" : "Einträge bearbeiten",
+            onPressed: _deleteMode
+                ? null // deaktiviert, wenn Löschmodus aktiv
+                : () async {
+              if (_editMode) {
+                // Änderungen speichern
+                for (var keyDatumGebiet in _eintraegeNachDatumGebietGipfel.keys) {
+                  final gipfelMap = _eintraegeNachDatumGebietGipfel[keyDatumGebiet]!;
+                  for (var wege in gipfelMap.values) {
+                    for (var eintrag in wege) {
+                      final controllerMap = _controllers[eintrag.id];
+                      if (controllerMap != null) {
+                        eintrag.weg = controllerMap['weg']!.text;
+                        eintrag.schwierigkeit = controllerMap['schwierigkeit']!.text;
+                        await HiveDatabaseHelper.updateKletterEintrag(eintrag);
+                      }
+                    }
+                  }
+                }
+                _loadKletterwege(); // UI neu laden
+              }
+              setState(() => _editMode = !_editMode);
+            },
+          ),
+          IconButton(
+            icon: Icon(_deleteMode ? Icons.check : Icons.delete),
+            tooltip: _deleteMode
+                ? (_selectedDatumGebietKeys.isEmpty
+                ? "Keine Auswahl, Löschmodus beenden"
+                : "Ausgewählte Einträge löschen")
+                : (_editMode
+                ? "Bearbeiten aktiv — Löschen nicht möglich"
+                : "Einträge auswählen zum Löschen"),
+            onPressed: _editMode
+                ? null // 🔒 deaktiviert, wenn Bearbeitungsmodus aktiv
+                : () async {
+              if (_deleteMode) {
+                if (_selectedDatumGebietKeys.isEmpty) {
+                  setState(() => _deleteMode = false);
+                  return;
+                }
+
+                // markierte Einträge löschen
+                for (var key in _selectedDatumGebietKeys) {
+                  final gipfelMap = _eintraegeNachDatumGebietGipfel[key]!;
+                  for (var wege in gipfelMap.values) {
+                    for (var eintrag in wege) {
+                      await HiveDatabaseHelper.deleteKletterEintrag(eintrag);
+                    }
+                  }
+                }
+                _selectedDatumGebietKeys.clear();
+                setState(() => _deleteMode = false);
+                _loadKletterwege();
+              } else {
+                setState(() {
+                  _deleteMode = true;
+                  _selectedDatumGebietKeys.clear();
+                });
+              }
+            },
+          ),
+
         ],
       ),
       body: _eintraegeNachDatumGebietGipfel.isEmpty
@@ -285,13 +323,59 @@ class _DashboardState extends State<Dashboard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "$tagNummer) ${datumUndGebiet.replaceFirst(' – ', ': ')}",
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // Zahl vorne
+                              Text(
+                                "$tagNummer) ",
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
+                              Expanded(
+                                child: _editMode
+                                    ? TextField(
+                                  controller: TextEditingController(
+                                    text: "${datumUndGebiet.replaceFirst(' – ', ': ')}",
+                                  ),
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none, // keine Outline
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.zero, // Höhe passt sich an
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                    height: 1.0, // verhindert Zeilenhöhen-Sprung
+                                  ),
+                                  onChanged: (v) {
+                                    final parts = v.split(':');
+                                    if (parts.length == 2) {
+                                      final datum = parts[0].trim();
+                                      final gebiet = parts[1].trim();
+                                      for (var wegeListe in gipfelMap.values) {
+                                        for (var eintrag in wegeListe) {
+                                          eintrag.datum = datum;   // Datum speichern
+                                          eintrag.gebiet = gebiet; // Gebiet speichern
+                                        }
+                                      }
+                                    }
+                                  },
+                                )
+                                    : Text(
+                                  "${datumUndGebiet.replaceFirst(' – ', ': ')}",
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           ...gipfelMap.entries.map((gipfelEntry) {
@@ -303,28 +387,95 @@ class _DashboardState extends State<Dashboard> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
                                       const Icon(Icons.filter_hdr, color: Colors.grey, size: 18),
                                       const SizedBox(width: 4),
-                                      Text(
-                                        gipfel,
-                                        style: const TextStyle(
-                                          fontSize: 14.5,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.black87,
+                                      Expanded(
+                                        child: _editMode
+                                            ? Builder(builder: (context) {
+                                          // Controller für diesen Gipfel erstellen, falls noch nicht vorhanden
+                                          if (!_controllers.containsKey(gipfel.hashCode)) {
+                                            _controllers[gipfel.hashCode] = {
+                                              'gipfel': TextEditingController(text: gipfel),
+                                            };
+                                          }
+
+                                          return TextField(
+                                            controller: _controllers[gipfel.hashCode]!['gipfel'],
+                                            decoration: const InputDecoration(
+                                              border: InputBorder.none,
+                                              isDense: true,
+                                              contentPadding: EdgeInsets.symmetric(vertical: 2),
+                                            ),
+                                            style: const TextStyle(
+                                              fontSize: 14.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black87,
+                                              height: 1.0, // verhindert Zeilenhöhen-Sprung
+                                            ),
+                                            onChanged: (v) {
+                                              // alle Einträge für diesen Gipfel aktualisieren
+                                              for (var eintrag in wege) {
+                                                eintrag.gipfel = v;
+                                              }
+                                            },
+                                          );
+                                        })
+                                            : Text(
+                                          gipfel,
+                                          style: const TextStyle(
+                                            fontSize: 14.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black87,
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
                                   ...wege.map((eintrag) {
+                                    // Controller für diesen Eintrag erstellen, falls noch nicht existiert
+                                    if (!_controllers.containsKey(eintrag.key)) {
+                                      _controllers[eintrag.key] = {
+                                        'weg': TextEditingController(text: eintrag.weg),
+                                        'schwierigkeit': TextEditingController(text: eintrag.schwierigkeit),
+                                      };
+                                    }
+
                                     return Padding(
                                       padding: const EdgeInsets.only(left: 22, top: 1),
-                                      child: Text(
-                                        "→ ${eintrag.weg} (${eintrag.schwierigkeit})",
-                                        style: const TextStyle(
-                                          fontSize: 13.5,
-                                          color: Colors.black87,
-                                        ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          const Text("→ ", style: TextStyle(fontSize: 13.5, color: Colors.black87)),
+
+                                          // Ein TextField für Weg + Schwierigkeit
+                                          IntrinsicWidth(
+                                            child: TextField(
+                                              controller: TextEditingController(
+                                                  text: "${eintrag.weg} (${eintrag.schwierigkeit})"
+                                              ),
+                                              decoration: const InputDecoration(
+                                                border: InputBorder.none,
+                                                isDense: true,
+                                                contentPadding: EdgeInsets.zero,
+                                              ),
+                                              style: const TextStyle(
+                                                fontSize: 13.5,
+                                                color: Colors.black87,
+                                                height: 1.0, // verhindert Zeilenhöhen-Sprung
+                                              ),
+                                              onChanged: (v) {
+                                                final match = RegExp(r"^(.*) \((.*)\)$").firstMatch(v);
+                                                if (match != null) {
+                                                  eintrag.weg = match.group(1)!;
+                                                  eintrag.schwierigkeit = match.group(2)!;
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     );
                                   }).toList(),

@@ -103,7 +103,7 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  /// Kletterweg bearbeiten
+  /*/// Kletterweg bearbeiten
   Future<void> _editKletterweg(KletterEintrag eintrag) async {
     final datumController = TextEditingController(text: eintrag.datum);
     final gebietController = TextEditingController(text: eintrag.gebiet);
@@ -169,7 +169,7 @@ class _DashboardState extends State<Dashboard> {
         );
       },
     );
-  }
+  }*/
 
   /// Filterungen
   Widget build(BuildContext context) {
@@ -220,24 +220,31 @@ class _DashboardState extends State<Dashboard> {
             icon: Icon(_editMode ? Icons.check : Icons.edit),
             tooltip: _editMode ? "Bearbeitung speichern" : "Einträge bearbeiten",
             onPressed: _deleteMode
-                ? null // deaktiviert, wenn Löschmodus aktiv
+                ? null
                 : () async {
               if (_editMode) {
                 // Änderungen speichern
                 for (var keyDatumGebiet in _eintraegeNachDatumGebietGipfel.keys) {
                   final gipfelMap = _eintraegeNachDatumGebietGipfel[keyDatumGebiet]!;
-                  for (var wege in gipfelMap.values) {
-                    for (var eintrag in wege) {
-                      final controllerMap = _controllers[eintrag.id];
-                      if (controllerMap != null) {
-                        eintrag.weg = controllerMap['weg']!.text;
-                        eintrag.schwierigkeit = controllerMap['schwierigkeit']!.text;
-                        await HiveDatabaseHelper.updateKletterEintrag(eintrag);
+
+                  for (var gipfel in gipfelMap.keys) {
+                    final wegeListe = gipfelMap[gipfel]!;
+
+                    for (var eintrag in wegeListe) {
+                      // Text aus Controllern übernehmen (Weg + Schwierigkeit)
+                      final controllerSet = _controllers[eintrag.key];
+                      if (controllerSet != null) {
+                        eintrag.weg = controllerSet['weg']!.text.trim();
+                        eintrag.schwierigkeit = controllerSet['schwierigkeit']!.text.trim();
                       }
+
+                      await HiveDatabaseHelper.updateKletterEintrag(eintrag);
                     }
                   }
                 }
-                _loadKletterwege(); // UI neu laden
+
+                _controllers.clear();
+                _loadKletterwege();
               }
               setState(() => _editMode = !_editMode);
             },
@@ -403,6 +410,7 @@ class _DashboardState extends State<Dashboard> {
 
                                           return TextField(
                                             controller: _controllers[gipfel.hashCode]!['gipfel'],
+                                            enabled: _editMode,
                                             decoration: const InputDecoration(
                                               border: InputBorder.none,
                                               isDense: true,
@@ -412,10 +420,9 @@ class _DashboardState extends State<Dashboard> {
                                               fontSize: 14.5,
                                               fontWeight: FontWeight.w600,
                                               color: Colors.black87,
-                                              height: 1.0, // verhindert Zeilenhöhen-Sprung
+                                              height: 1.0,
                                             ),
                                             onChanged: (v) {
-                                              // alle Einträge für diesen Gipfel aktualisieren
                                               for (var eintrag in wege) {
                                                 eintrag.gipfel = v;
                                               }
@@ -434,28 +441,19 @@ class _DashboardState extends State<Dashboard> {
                                     ],
                                   ),
                                   ...wege.map((eintrag) {
-                                    // Controller für diesen Eintrag erstellen, falls noch nicht existiert
-                                    if (!_controllers.containsKey(eintrag.key)) {
-                                      _controllers[eintrag.key] = {
-                                        'weg': TextEditingController(text: eintrag.weg),
-                                        'schwierigkeit': TextEditingController(text: eintrag.schwierigkeit),
-                                      };
-                                    }
-
                                     return Padding(
                                       padding: const EdgeInsets.only(left: 22, top: 1),
                                       child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment: CrossAxisAlignment.center,
                                         children: [
                                           const Text("→ ", style: TextStyle(fontSize: 13.5, color: Colors.black87)),
 
-                                          // Ein TextField für Weg + Schwierigkeit
+                                          // IntrinsicWidth, damit Weg + Schwierigkeit nebeneinander bleiben
                                           IntrinsicWidth(
                                             child: TextField(
                                               controller: TextEditingController(
                                                   text: "${eintrag.weg} (${eintrag.schwierigkeit})"
                                               ),
+                                              enabled: _editMode,
                                               decoration: const InputDecoration(
                                                 border: InputBorder.none,
                                                 isDense: true,
@@ -464,9 +462,10 @@ class _DashboardState extends State<Dashboard> {
                                               style: const TextStyle(
                                                 fontSize: 13.5,
                                                 color: Colors.black87,
-                                                height: 1.0, // verhindert Zeilenhöhen-Sprung
+                                                height: 1.0,
                                               ),
                                               onChanged: (v) {
+                                                // Regex trennt Weg und Schwierigkeit
                                                 final match = RegExp(r"^(.*) \((.*)\)$").firstMatch(v);
                                                 if (match != null) {
                                                   eintrag.weg = match.group(1)!;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dashboard.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// --- Splash Screen/Startscreen ---
 // Statefullwidget = weil nach 2 Sekunden automatisch weiterleitet
@@ -40,26 +41,30 @@ class _SplashScreenState extends State<SplashScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFFF5F5F5), // helles Grau
-              Color(0xFF2E7D32), // sattes Grün
+              Color(0xFFE6DFC9), // etwas dunkleres Beige oben
+              Color(0xFF60594A), // dunkleres Braun unten
             ],
+            stops: [0, 0.7], // 0.33 = erstes Drittel hell, Rest dunkel
           ),
         ),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.terrain, size: 80, color: Colors.white),
-              const SizedBox(height: 20),
+              const Icon(Icons.terrain, size: 90, color: Color(0xFF60594A)),
+              const SizedBox(height: 8),
+
               Text(
                 "KLETTERLOGBUCH",
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  color: Colors.white,
+                style: GoogleFonts.openSans(
+                  color: const Color(0xFFF1ECD7),
+                  fontSize: 30,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: 2.0
                 ),
               ),
               const SizedBox(height: 20),
-              const CircularProgressIndicator(color: Colors.white),
+              const CircularProgressIndicator(color: Color(0xFFF1ECD7)),
             ],
           ),
         ),

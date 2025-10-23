@@ -3,6 +3,7 @@ import '../models/kletterweg_datenmodell.dart';
 import '../widgets/popup_add_kletterweg.dart';
 import '../database/hive_database_helper.dart';
 import '../widgets/popup_einzel_filter.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// --- Dashboard (Kletterlogbuch) ---
 // Neues Widget definieren
@@ -43,7 +44,7 @@ class _DashboardState extends State<Dashboard> {
   Future<void> _loadKletterwege() async {
     final eintraegeListe = HiveDatabaseHelper.queryAllKletterEintraege();
 
-    // 1️⃣ Gefilterte Liste anhand _filterMap
+    // Gefilterte Liste anhand _filterMap
     final gefiltert = eintraegeListe.where((e) {
       bool match = true;
 
@@ -61,7 +62,7 @@ class _DashboardState extends State<Dashboard> {
       return match;
     }).toList();
 
-    // 2️⃣ Map aufbauen für ListView
+    // Map aufbauen für ListView
     Map<String, Map<String, List<KletterEintrag>>> tempMap = {};
     for (var eintrag in gefiltert) {
       final keyDatumGebiet = "${eintrag.datum} – ${eintrag.gebiet}";
@@ -70,9 +71,17 @@ class _DashboardState extends State<Dashboard> {
       tempMap.putIfAbsent(keyDatumGebiet, () => {});
       tempMap[keyDatumGebiet]!.putIfAbsent(keyGipfel, () => []);
       tempMap[keyDatumGebiet]![keyGipfel]!.add(eintrag);
+
+      // Controller nur einmalig anlegen
+      if (!_controllers.containsKey(eintrag.key)) {
+        _controllers[eintrag.key] = {
+          'weg': TextEditingController(text: eintrag.weg),
+          'schwierigkeit': TextEditingController(text: eintrag.schwierigkeit),
+        };
+      }
     }
 
-    // 3️⃣ Sortieren nach Datum absteigend
+    // Sortieren nach Datum absteigend
     final sortedKeys = tempMap.keys.toList()
       ..sort((a, b) {
         final dateA = DateTime.parse(a.split(' – ')[0].split('.').reversed.join('-'));
@@ -82,7 +91,7 @@ class _DashboardState extends State<Dashboard> {
 
     final sortedMap = { for (var k in sortedKeys) k: tempMap[k]! };
 
-    // 4️⃣ In setState einfügen, damit UI neu baut
+    // In setState einfügen, damit UI neu baut
     setState(() {
       _eintraegeNachDatumGebietGipfel.clear();
       _eintraegeNachDatumGebietGipfel.addAll(sortedMap);
@@ -103,89 +112,31 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  /*/// Kletterweg bearbeiten
-  Future<void> _editKletterweg(KletterEintrag eintrag) async {
-    final datumController = TextEditingController(text: eintrag.datum);
-    final gebietController = TextEditingController(text: eintrag.gebiet);
-    final gipfelController = TextEditingController(text: eintrag.gipfel);
-    final wegController = TextEditingController(text: eintrag.weg);
-    final schwierigkeitController = TextEditingController(text: eintrag.schwierigkeit);
-
-    // Diaglogfester öffnet sich wieder, wie bei Erstellen
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Kletterweg bearbeiten"),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                TextField(
-                  controller: datumController,
-                  decoration: const InputDecoration(labelText: "Datum"),
-                ),
-                TextField(
-                  controller: gebietController,
-                  decoration: const InputDecoration(labelText: "Gebiet"),
-                ),
-                TextField(
-                  controller: gipfelController,
-                  decoration: const InputDecoration(labelText: "Gipfel"),
-                ),
-                TextField(
-                  controller: wegController,
-                  decoration: const InputDecoration(labelText: "Weg"),
-                ),
-                TextField(
-                  controller: schwierigkeitController,
-                  decoration: const InputDecoration(labelText: "Schwierigkeit"),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text("Abbrechen"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final updatedEintrag = KletterEintrag(
-                  id: eintrag.id,
-                  datum: datumController.text,
-                  gebiet: gebietController.text,
-                  gipfel: gipfelController.text,
-                  weg: wegController.text,
-                  schwierigkeit: schwierigkeitController.text,
-                );
-
-                await HiveDatabaseHelper.updateKletterEintrag(updatedEintrag);
-                Navigator.of(context).pop();
-                _loadKletterwege(); // aktualisieren
-              },
-              child: const Text("Speichern"),
-            ),
-          ],
-        );
-      },
-    );
-  }*/
-
   /// Filterungen
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF9EB),
       appBar: AppBar(
-        backgroundColor: Colors.green,
-        title: const Text("Dashboard", style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF587C47),
+        title: Text(
+          "Dashboard",
+          style: GoogleFonts.openSans(
+            color: const Color(0xFFF1ECD7),
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 2,
+          ),
+        ),
         actions: [
           Tooltip(
             message: "Filtermenü anzeigen",
             child: IconButton(
               icon: const Icon(Icons.filter_list),
+              color: Color(0xFFF1ECD7),
               onPressed: () {
                 showMenu<String>(
                   context: context,
-                  position: RelativeRect.fromLTRB(100, 80, 0, 0), // Position über dem Icon anpassen
+                  position: RelativeRect.fromLTRB(100, 80, 0, 0),
                   items: const [
                     PopupMenuItem(value: "alle", child: Text("Alle anzeigen")),
                     PopupMenuItem(value: "datum", child: Text("Datum")),
@@ -218,6 +169,7 @@ class _DashboardState extends State<Dashboard> {
           ),
           IconButton(
             icon: Icon(_editMode ? Icons.check : Icons.edit),
+            color: Color(0xFFF1ECD7),
             tooltip: _editMode ? "Bearbeitung speichern" : "Einträge bearbeiten",
             onPressed: _deleteMode
                 ? null
@@ -243,7 +195,6 @@ class _DashboardState extends State<Dashboard> {
                   }
                 }
 
-                _controllers.clear();
                 _loadKletterwege();
               }
               setState(() => _editMode = !_editMode);
@@ -251,6 +202,7 @@ class _DashboardState extends State<Dashboard> {
           ),
           IconButton(
             icon: Icon(_deleteMode ? Icons.check : Icons.delete),
+            color: Color(0xFFF1ECD7),
             tooltip: _deleteMode
                 ? (_selectedDatumGebietKeys.isEmpty
                 ? "Keine Auswahl, Löschmodus beenden"
@@ -316,15 +268,26 @@ class _DashboardState extends State<Dashboard> {
                   }
                       : null,
                   child: Card(
-                    elevation: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    elevation: 2,                    margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Container(
+                    shadowColor: const Color(0xFF60594A).withOpacity(0.4),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOut,
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.green.withOpacity(0.2) : Colors.white,
-                        borderRadius: BorderRadius.circular(8),
+                        color: isSelected
+                            ? const Color(0xFFEADABD)
+                            : const Color(0xFFF1E8D7), // angepasste helle Cremefarbe
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF60594A).withOpacity(0.2),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
                       padding: const EdgeInsets.all(8),
                       child: Column(
@@ -339,47 +302,45 @@ class _DashboardState extends State<Dashboard> {
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.green,
+                                  color: Color(0xFF60594A),
                                 ),
                               ),
                               Expanded(
-                                child: _editMode
-                                    ? TextField(
+                                child: TextField(
                                   controller: TextEditingController(
                                     text: "${datumUndGebiet.replaceFirst(' – ', ': ')}",
                                   ),
+                                  enabled: _editMode,
+                                  maxLines: null,
+                                  minLines: 1,
+                                  maxLength: 30,
+                                  buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
                                   decoration: const InputDecoration(
-                                    border: InputBorder.none, // keine Outline
+                                    border: InputBorder.none,
                                     isDense: true,
-                                    contentPadding: EdgeInsets.zero, // Höhe passt sich an
+                                    contentPadding: EdgeInsets.zero,
                                   ),
                                   style: const TextStyle(
                                     fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green,
-                                    height: 1.0, // verhindert Zeilenhöhen-Sprung
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF60594A),
+                                    height: 1.0,
                                   ),
                                   onChanged: (v) {
-                                    final parts = v.split(':');
-                                    if (parts.length == 2) {
-                                      final datum = parts[0].trim();
-                                      final gebiet = parts[1].trim();
-                                      for (var wegeListe in gipfelMap.values) {
-                                        for (var eintrag in wegeListe) {
-                                          eintrag.datum = datum;   // Datum speichern
-                                          eintrag.gebiet = gebiet; // Gebiet speichern
+                                    if (_editMode) {
+                                      final parts = v.split(':');
+                                      if (parts.length == 2) {
+                                        final datum = parts[0].trim();
+                                        final gebiet = parts[1].trim();
+                                        for (var wegeListe in gipfelMap.values) {
+                                          for (var eintrag in wegeListe) {
+                                            eintrag.datum = datum;
+                                            eintrag.gebiet = gebiet;
+                                          }
                                         }
                                       }
                                     }
                                   },
-                                )
-                                    : Text(
-                                  "${datumUndGebiet.replaceFirst(' – ', ': ')}",
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green,
-                                  ),
                                 ),
                               ),
                             ],
@@ -396,12 +357,10 @@ class _DashboardState extends State<Dashboard> {
                                   Row(
                                     crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
-                                      const Icon(Icons.filter_hdr, color: Colors.grey, size: 18),
+                                      const Icon(Icons.filter_hdr, color: Color(0xFF60594A), size: 18),
                                       const SizedBox(width: 4),
                                       Expanded(
-                                        child: _editMode
-                                            ? Builder(builder: (context) {
-                                          // Controller für diesen Gipfel erstellen, falls noch nicht vorhanden
+                                        child: Builder(builder: (context) {
                                           if (!_controllers.containsKey(gipfel.hashCode)) {
                                             _controllers[gipfel.hashCode] = {
                                               'gipfel': TextEditingController(text: gipfel),
@@ -411,6 +370,10 @@ class _DashboardState extends State<Dashboard> {
                                           return TextField(
                                             controller: _controllers[gipfel.hashCode]!['gipfel'],
                                             enabled: _editMode,
+                                            maxLines: null,
+                                            minLines: 1,
+                                            maxLength: 30,
+                                            buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
                                             decoration: const InputDecoration(
                                               border: InputBorder.none,
                                               isDense: true,
@@ -418,42 +381,47 @@ class _DashboardState extends State<Dashboard> {
                                             ),
                                             style: const TextStyle(
                                               fontSize: 14.5,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.black87,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF60594A),
                                               height: 1.0,
                                             ),
                                             onChanged: (v) {
-                                              for (var eintrag in wege) {
-                                                eintrag.gipfel = v;
+                                              if (_editMode) {
+                                                for (var eintrag in wege) {
+                                                  eintrag.gipfel = v;
+                                                }
                                               }
                                             },
                                           );
-                                        })
-                                            : Text(
-                                          gipfel,
-                                          style: const TextStyle(
-                                            fontSize: 14.5,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
+                                        }),
                                       ),
                                     ],
                                   ),
                                   ...wege.map((eintrag) {
+                                    // Controller für Weg + Schwierigkeit anlegen, falls noch nicht vorhanden
+                                    _controllers.putIfAbsent(eintrag.key, () => {});
+                                    if (!_controllers[eintrag.key]!.containsKey('combined')) {
+                                      _controllers[eintrag.key]!['combined'] =
+                                          TextEditingController(text: "${eintrag.weg} (${eintrag.schwierigkeit})");
+                                    }
+
+                                    final combinedController = _controllers[eintrag.key]!['combined']!;
+
                                     return Padding(
                                       padding: const EdgeInsets.only(left: 22, top: 1),
                                       child: Row(
                                         children: [
-                                          const Text("→ ", style: TextStyle(fontSize: 13.5, color: Colors.black87)),
+                                          const Text("→ ", style: TextStyle(fontSize: 13.5, color: Color(0xFF60594A))),
 
                                           // IntrinsicWidth, damit Weg + Schwierigkeit nebeneinander bleiben
-                                          IntrinsicWidth(
+                                          Expanded(
                                             child: TextField(
-                                              controller: TextEditingController(
-                                                  text: "${eintrag.weg} (${eintrag.schwierigkeit})"
-                                              ),
+                                              controller: combinedController,
                                               enabled: _editMode,
+                                              maxLines: null,
+                                              minLines: 1,
+                                              maxLength: 30,
+                                              buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
                                               decoration: const InputDecoration(
                                                 border: InputBorder.none,
                                                 isDense: true,
@@ -461,15 +429,17 @@ class _DashboardState extends State<Dashboard> {
                                               ),
                                               style: const TextStyle(
                                                 fontSize: 13.5,
-                                                color: Colors.black87,
+                                                color: Color(0xFF60594A),
                                                 height: 1.0,
                                               ),
                                               onChanged: (v) {
-                                                // Regex trennt Weg und Schwierigkeit
                                                 final match = RegExp(r"^(.*) \((.*)\)$").firstMatch(v);
                                                 if (match != null) {
-                                                  eintrag.weg = match.group(1)!;
-                                                  eintrag.schwierigkeit = match.group(2)!;
+                                                  eintrag.weg = match.group(1)!.trim();
+                                                  eintrag.schwierigkeit = match.group(2)!.trim();
+                                                } else {
+                                                  eintrag.weg = v.trim();
+                                                  eintrag.schwierigkeit = "";
                                                 }
                                               },
                                             ),
@@ -492,8 +462,11 @@ class _DashboardState extends State<Dashboard> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF587C47), // warmes dunkles Grün
+        foregroundColor: const Color(0xFFF1ECD7), // helles Creme für das Icon
+        elevation: 4,
         onPressed: _addKletterweg,
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, size: 30),
       ),
     );
   }

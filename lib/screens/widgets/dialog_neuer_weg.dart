@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/kletterweg_datenmodell.dart';
+import '../../modelle/klettereintrag.dart';
 
 /// --- Dialog zum Hinzufügen eines neuen Kletterwegs ---
 //Callback-Funktion, die aufgerufen wird, wenn der Benutzer speichert

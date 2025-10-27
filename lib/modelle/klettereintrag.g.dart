@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'kletterweg_datenmodell.dart';
+part of 'klettereintrag.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator

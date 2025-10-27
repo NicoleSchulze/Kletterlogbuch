@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/kletterweg_datenmodell.dart';
+import '../../modelle/klettereintrag.dart';
 
 /// --- Datenmodell für einen Klettertag ---
 // Ein Tag, an dem mehrere Kletterwege dokumentiert werden

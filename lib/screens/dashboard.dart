@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../models/kletterweg_datenmodell.dart';
-import '../widgets/popup_add_kletterweg.dart';
-import '../database/hive_database_helper.dart';
-import '../widgets/popup_einzel_filter.dart';
+import '../../modelle/klettereintrag.dart';
+import '../../screens/widgets/dialog_neuer_weg.dart';
+import '../datenbank/hive_hilfe.dart';
+import '../../screens/widgets/dialog_filter.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// --- Dashboard (Kletterlogbuch) ---
@@ -42,7 +42,7 @@ class _DashboardState extends State<Dashboard> {
 
   /// Alle Kletterwege aus der Datenbank laden
   Future<void> _loadKletterwege() async {
-    final eintraegeListe = HiveDatabaseHelper.queryAllKletterEintraege();
+    final eintraegeListe = HiveHilfe.alle();
 
     // Gefilterte Liste anhand _filterMap
     final gefiltert = eintraegeListe.where((e) {
@@ -105,7 +105,7 @@ class _DashboardState extends State<Dashboard> {
       context: context,
       builder: (context) => AddKletterwegDialog(
         onSave: (KletterEintrag neuerEintrag) async {
-          await HiveDatabaseHelper.insertKletterEintrag(neuerEintrag);
+          await HiveHilfe.hinzufuegen(neuerEintrag);
           _loadKletterwege();
         },
       ),
@@ -190,7 +190,7 @@ class _DashboardState extends State<Dashboard> {
                         eintrag.schwierigkeit = controllerSet['schwierigkeit']!.text.trim();
                       }
 
-                      await HiveDatabaseHelper.updateKletterEintrag(eintrag);
+                      await HiveHilfe.aktualisieren(eintrag);
                     }
                   }
                 }
@@ -224,7 +224,7 @@ class _DashboardState extends State<Dashboard> {
                   final gipfelMap = _eintraegeNachDatumGebietGipfel[key]!;
                   for (var wege in gipfelMap.values) {
                     for (var eintrag in wege) {
-                      await HiveDatabaseHelper.deleteKletterEintrag(eintrag);
+                      await HiveHilfe.loeschen(eintrag);
                     }
                   }
                 }
@@ -272,7 +272,7 @@ class _DashboardState extends State<Dashboard> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    shadowColor: const Color(0xFF60594A).withOpacity(0.4),
+                    shadowColor: const Color(0xFF60594A).withValues(alpha: 0.4),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
                       curve: Curves.easeOut,
@@ -283,7 +283,7 @@ class _DashboardState extends State<Dashboard> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF60594A).withOpacity(0.2),
+                            color: const Color(0xFF60594A).withValues(alpha: 0.2),
                             blurRadius: 6,
                             offset: const Offset(0, 3),
                           ),

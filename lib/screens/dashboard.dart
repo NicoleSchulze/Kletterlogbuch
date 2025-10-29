@@ -1,22 +1,28 @@
 import 'package:flutter/material.dart';
-import '../../modelle/klettereintrag.dart';
-import '../../screens/widgets/dialog_neuer_weg.dart';
-import '../datenbank/hive_hilfe.dart';
-import '../../screens/widgets/dialog_filter.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_kletterlogbuch/konstanten/farben.dart';
+import 'package:flutter_kletterlogbuch/modelle/klettereintrag.dart';
+import 'package:flutter_kletterlogbuch/widgets/dashboard_dialogNeuerWeg.dart';
+import 'package:flutter_kletterlogbuch/services/hive_hilfe.dart';
+import 'package:flutter_kletterlogbuch/widgets/dashboard_dialogFilter.dart';
 
-/// --- Dashboard (Kletterlogbuch) ---
-// Neues Widget definieren
+/// ============================================================
+/// Dashboard (Kletterlogbuch)
+/// ============================================================
+/// - Zeigt alle Klettereinträge gruppiert nach Datum + Gebiet + Gipfel
+/// - Ermöglicht Bearbeitung und Löschen der Einträge
+/// - Filterfunktion (Datum, Gebiet, Gipfel, Weg, Schwierigkeit)
+/// ============================================================// Neues Widget definieren
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
 
-  // Seitenaufbau, Welchen State nutzen?
   @override
   State<Dashboard> createState() => _DashboardState();
 }
 
-// Definition State
 class _DashboardState extends State<Dashboard> {
+  // ----------------------------
+  // Filterung
+  // ----------------------------
   Map<String, dynamic> _filterMap = {
     "datum": null,
     "gebiet": null,
@@ -25,14 +31,22 @@ class _DashboardState extends State<Dashboard> {
     "schwierigkeit": null,
   };
 
-  // Map für gruppierte Anzeige nach Datum + Gebiet
+  // ----------------------------
+  // Gruppierte Datenstruktur
+  // ----------------------------
   Map<String, Map<String, List<KletterEintrag>>> _eintraegeNachDatumGebietGipfel = {};
 
+  // ----------------------------
+  // Edit / Delete Mode
+  // ----------------------------
   bool _editMode = false;
-  final Map<int, Map<String, TextEditingController>> _controllers = {};
+  bool _deleteMode = false;
+  Set<String> _selectedDatumGebietKeys = {};
 
-  bool _deleteMode = false; // true, wenn Auswahlmodus aktiv
-  Set<String> _selectedDatumGebietKeys = {}; // markierte Cards (Datum + Gebiet)
+  // ----------------------------
+  // Controller Verwaltung
+  // ----------------------------
+  final Map<int, Map<String, TextEditingController>> _controllers = {};
 
   @override
   void initState() {
@@ -40,11 +54,15 @@ class _DashboardState extends State<Dashboard> {
     _loadKletterwege(); // Daten beim Start laden
   }
 
-  /// Alle Kletterwege aus der Datenbank laden
+  // ----------------------------
+  // Controller Verwaltung
+  // ----------------------------
   Future<void> _loadKletterwege() async {
     final eintraegeListe = HiveHilfe.alle();
 
-    // Gefilterte Liste anhand _filterMap
+    // ----------------------------
+    // Filterung
+    // ----------------------------
     final gefiltert = eintraegeListe.where((e) {
       bool match = true;
 
@@ -58,11 +76,12 @@ class _DashboardState extends State<Dashboard> {
         match &= e.weg.contains(_filterMap["weg"]!);
       if (_filterMap["schwierigkeit"] != null && _filterMap["schwierigkeit"]!.isNotEmpty)
         match &= e.schwierigkeit == _filterMap["schwierigkeit"];
-
       return match;
     }).toList();
 
-    // Map aufbauen für ListView
+    // ----------------------------
+    // Gruppieren
+    // ----------------------------
     Map<String, Map<String, List<KletterEintrag>>> tempMap = {};
     for (var eintrag in gefiltert) {
       final keyDatumGebiet = "${eintrag.datum} – ${eintrag.gebiet}";
@@ -72,16 +91,16 @@ class _DashboardState extends State<Dashboard> {
       tempMap[keyDatumGebiet]!.putIfAbsent(keyGipfel, () => []);
       tempMap[keyDatumGebiet]![keyGipfel]!.add(eintrag);
 
-      // Controller nur einmalig anlegen
-      if (!_controllers.containsKey(eintrag.key)) {
-        _controllers[eintrag.key] = {
-          'weg': TextEditingController(text: eintrag.weg),
-          'schwierigkeit': TextEditingController(text: eintrag.schwierigkeit),
-        };
-      }
+      // Controller einmalig anlegen
+      _controllers.putIfAbsent(eintrag.key, () => {
+        'weg': TextEditingController(text: eintrag.weg),
+        'schwierigkeit': TextEditingController(text: eintrag.schwierigkeit),
+      });
     }
 
+    // ----------------------------
     // Sortieren nach Datum absteigend
+    // ----------------------------
     final sortedKeys = tempMap.keys.toList()
       ..sort((a, b) {
         final dateA = DateTime.parse(a.split(' – ')[0].split('.').reversed.join('-'));
@@ -91,15 +110,13 @@ class _DashboardState extends State<Dashboard> {
 
     final sortedMap = { for (var k in sortedKeys) k: tempMap[k]! };
 
-    // In setState einfügen, damit UI neu baut
     setState(() {
       _eintraegeNachDatumGebietGipfel.clear();
       _eintraegeNachDatumGebietGipfel.addAll(sortedMap);
     });
   }
 
-  /// Kletterwege hinzufügen
-  // Methode des States (zum Hinzufügen eines Kletterwegs)
+  // Dialog zum Hinzufügen eines neuen Kletterwegs
   void _addKletterweg() {
     showDialog(
       context: context,
@@ -112,31 +129,85 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  /// Filterungen
+  // Speichern der Änderungen im Edit-Modus
+  Future<void> _saveEdits() async {
+    for (var datumGebiet in _eintraegeNachDatumGebietGipfel.keys) {
+      final gipfelMap = _eintraegeNachDatumGebietGipfel[datumGebiet]!;
+
+      for (var wegeListe in gipfelMap.values) {
+        for (var eintrag in wegeListe) {
+          final controllerSet = _controllers[eintrag.key];
+          if (controllerSet != null) {
+            eintrag.weg = controllerSet['weg']!.text.trim();
+            eintrag.schwierigkeit = controllerSet['schwierigkeit']!.text.trim();
+          }
+          await HiveHilfe.aktualisieren(eintrag);
+        }
+      }
+    }
+    _loadKletterwege();
+  }
+
+  // Löschen markierter Einträge
+  Future<void> _deleteSelected() async {
+    for (var key in _selectedDatumGebietKeys) {
+      final gipfelMap = _eintraegeNachDatumGebietGipfel[key]!;
+      for (var wegeListe in gipfelMap.values) {
+        for (var eintrag in wegeListe) {
+          await HiveHilfe.loeschen(eintrag);
+        }
+      }
+    }
+    _selectedDatumGebietKeys.clear();
+    setState(() => _deleteMode = false);
+    _loadKletterwege();
+  }
+
+  // Filterdialog anzeigen
+  void _showFilterDialog(String filterKategorie) {
+    showDialog(
+      context: context,
+      builder: (_) => KletterwegEinzelFilterDialog(
+        filterKategorie: filterKategorie,
+        onApply: (filterMap) {
+          setState(() => _filterMap = filterMap);
+          _loadKletterwege();
+        },
+      ),
+    );
+  }
+
+  // ----------------------------
+  // Widget für Datum + Gebiet
+  // ----------------------------
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9EB),
+      backgroundColor: AppFarben.hellesCreme,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF587C47),
+        backgroundColor: AppFarben.primaerygruen,
         title: Text(
           "Dashboard",
-          style: GoogleFonts.openSans(
-            color: const Color(0xFFF1ECD7),
+          style: TextStyle(
+            color: AppFarben.dunklesCreme,
             fontSize: 22,
             fontWeight: FontWeight.w600,
             letterSpacing: 2,
           ),
         ),
         actions: [
+          // ----------------------------
+          // Filter Button
+          // ----------------------------
           Tooltip(
             message: "Filtermenü anzeigen",
             child: IconButton(
               icon: const Icon(Icons.filter_list),
-              color: Color(0xFFF1ECD7),
-              onPressed: () {
-                showMenu<String>(
+              color: AppFarben.dunklesCreme,
+              onPressed: () async {
+                final value = await showMenu<String>(
                   context: context,
-                  position: RelativeRect.fromLTRB(100, 80, 0, 0),
+                  position: const RelativeRect.fromLTRB(100, 80, 0, 0),
                   items: const [
                     PopupMenuItem(value: "alle", child: Text("Alle anzeigen")),
                     PopupMenuItem(value: "datum", child: Text("Datum")),
@@ -145,92 +216,47 @@ class _DashboardState extends State<Dashboard> {
                     PopupMenuItem(value: "weg", child: Text("Weg")),
                     PopupMenuItem(value: "schwierigkeit", child: Text("Schwierigkeit")),
                   ],
-                ).then((value) {
-                  if (value == null) return;
+                );
 
-                  if (value == "alle") {
-                    setState(() => _filterMap.updateAll((key, value) => null));
-                    _loadKletterwege();
-                  } else {
-                    showDialog(
-                      context: context,
-                      builder: (_) => KletterwegEinzelFilterDialog(
-                        filterKategorie: value,
-                        onApply: (filterMap) {
-                          setState(() => _filterMap = filterMap);
-                          _loadKletterwege();
-                        },
-                      ),
-                    );
-                  }
-                });
+                if (value == null) return;
+                if (value == "alle") {
+                  setState(() => _filterMap.updateAll((key, value) => null));
+                  _loadKletterwege();
+                } else {
+                  _showFilterDialog(value);
+                }
               },
             ),
           ),
+
+          // ----------------------------
+          // Edit Mode
+          // ----------------------------
           IconButton(
             icon: Icon(_editMode ? Icons.check : Icons.edit),
-            color: Color(0xFFF1ECD7),
+            color: AppFarben.dunklesCreme,
             tooltip: _editMode ? "Bearbeitung speichern" : "Einträge bearbeiten",
             onPressed: _deleteMode
-                ? null
-                : () async {
-              if (_editMode) {
-                // Änderungen speichern
-                for (var keyDatumGebiet in _eintraegeNachDatumGebietGipfel.keys) {
-                  final gipfelMap = _eintraegeNachDatumGebietGipfel[keyDatumGebiet]!;
-
-                  for (var gipfel in gipfelMap.keys) {
-                    final wegeListe = gipfelMap[gipfel]!;
-
-                    for (var eintrag in wegeListe) {
-                      // Text aus Controllern übernehmen (Weg + Schwierigkeit)
-                      final controllerSet = _controllers[eintrag.key];
-                      if (controllerSet != null) {
-                        eintrag.weg = controllerSet['weg']!.text.trim();
-                        eintrag.schwierigkeit = controllerSet['schwierigkeit']!.text.trim();
-                      }
-
-                      await HiveHilfe.aktualisieren(eintrag);
-                    }
-                  }
-                }
-
-                _loadKletterwege();
-              }
-              setState(() => _editMode = !_editMode);
+              ? null : () async {
+                if (_editMode) await _saveEdits();
+                setState(() => _editMode = !_editMode);
             },
           ),
+
+          // ----------------------------
+          // Delete Mode
+          // ----------------------------
           IconButton(
             icon: Icon(_deleteMode ? Icons.check : Icons.delete),
-            color: Color(0xFFF1ECD7),
+            color: AppFarben.dunklesCreme,
             tooltip: _deleteMode
-                ? (_selectedDatumGebietKeys.isEmpty
-                ? "Keine Auswahl, Löschmodus beenden"
-                : "Ausgewählte Einträge löschen")
-                : (_editMode
-                ? "Bearbeiten aktiv — Löschen nicht möglich"
-                : "Einträge auswählen zum Löschen"),
+                ? (_selectedDatumGebietKeys.isEmpty ? "Keine Auswahl, Löschmodus beenden" : "Ausgewählte Einträge löschen")
+                : (_editMode ? "Bearbeiten aktiv — Löschen nicht möglich" : "Einträge auswählen zum Löschen"),
             onPressed: _editMode
-                ? null // 🔒 deaktiviert, wenn Bearbeitungsmodus aktiv
-                : () async {
+                ? null : () {
               if (_deleteMode) {
-                if (_selectedDatumGebietKeys.isEmpty) {
-                  setState(() => _deleteMode = false);
-                  return;
-                }
-
-                // markierte Einträge löschen
-                for (var key in _selectedDatumGebietKeys) {
-                  final gipfelMap = _eintraegeNachDatumGebietGipfel[key]!;
-                  for (var wege in gipfelMap.values) {
-                    for (var eintrag in wege) {
-                      await HiveHilfe.loeschen(eintrag);
-                    }
-                  }
-                }
-                _selectedDatumGebietKeys.clear();
-                setState(() => _deleteMode = false);
-                _loadKletterwege();
+                if (_selectedDatumGebietKeys.isNotEmpty) _deleteSelected();
+                else setState(() => _deleteMode = false);
               } else {
                 setState(() {
                   _deleteMode = true;
@@ -242,6 +268,10 @@ class _DashboardState extends State<Dashboard> {
 
         ],
       ),
+
+      // ----------------------------
+      // Body
+      // ----------------------------
       body: _eintraegeNachDatumGebietGipfel.isEmpty
           ? const Center(child: Text("Noch keine Einträge"))
           : ListView(
@@ -268,22 +298,23 @@ class _DashboardState extends State<Dashboard> {
                   }
                       : null,
                   child: Card(
-                    elevation: 2,                    margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    shadowColor: const Color(0xFF60594A).withValues(alpha: 0.4),
+                    shadowColor: AppFarben.dunkelbraun.withValues(alpha: 0.4),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
                       curve: Curves.easeOut,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFFEADABD)
-                            : const Color(0xFFF1E8D7), // angepasste helle Cremefarbe
+                            ? AppFarben.ausgewaehlteKarteCreme
+                            : AppFarben.dunklesCreme,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF60594A).withValues(alpha: 0.2),
+                            color: AppFarben.dunkelbraun.withValues(alpha: 0.2),
                             blurRadius: 6,
                             offset: const Offset(0, 3),
                           ),
@@ -302,7 +333,7 @@ class _DashboardState extends State<Dashboard> {
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF60594A),
+                                  color: AppFarben.dunkelbraun,
                                 ),
                               ),
                               Expanded(
@@ -323,7 +354,7 @@ class _DashboardState extends State<Dashboard> {
                                   style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
-                                    color: Color(0xFF60594A),
+                                    color: AppFarben.dunkelbraun,
                                     height: 1.0,
                                   ),
                                   onChanged: (v) {
@@ -357,7 +388,7 @@ class _DashboardState extends State<Dashboard> {
                                   Row(
                                     crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
-                                      const Icon(Icons.filter_hdr, color: Color(0xFF60594A), size: 18),
+                                      const Icon(Icons.filter_hdr, color: AppFarben.dunkelbraun, size: 18),
                                       const SizedBox(width: 4),
                                       Expanded(
                                         child: Builder(builder: (context) {
@@ -382,7 +413,7 @@ class _DashboardState extends State<Dashboard> {
                                             style: const TextStyle(
                                               fontSize: 14.5,
                                               fontWeight: FontWeight.w700,
-                                              color: Color(0xFF60594A),
+                                              color: AppFarben.dunkelbraun,
                                               height: 1.0,
                                             ),
                                             onChanged: (v) {
@@ -411,9 +442,8 @@ class _DashboardState extends State<Dashboard> {
                                       padding: const EdgeInsets.only(left: 22, top: 1),
                                       child: Row(
                                         children: [
-                                          const Text("→ ", style: TextStyle(fontSize: 13.5, color: Color(0xFF60594A))),
+                                          const Text("→ ", style: TextStyle(fontSize: 13.5, color: AppFarben.dunkelbraun)),
 
-                                          // IntrinsicWidth, damit Weg + Schwierigkeit nebeneinander bleiben
                                           Expanded(
                                             child: TextField(
                                               controller: combinedController,
@@ -429,7 +459,7 @@ class _DashboardState extends State<Dashboard> {
                                               ),
                                               style: const TextStyle(
                                                 fontSize: 13.5,
-                                                color: Color(0xFF60594A),
+                                                color: AppFarben.dunkelbraun,
                                                 height: 1.0,
                                               ),
                                               onChanged: (v) {
@@ -462,8 +492,8 @@ class _DashboardState extends State<Dashboard> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF587C47), // warmes dunkles Grün
-        foregroundColor: const Color(0xFFF1ECD7), // helles Creme für das Icon
+        backgroundColor: AppFarben.primaerygruen,
+        foregroundColor: AppFarben.dunklesCreme,
         elevation: 4,
         onPressed: _addKletterweg,
         child: const Icon(Icons.add, size: 30),

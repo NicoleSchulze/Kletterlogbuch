@@ -1,7 +1,15 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import '../modelle/klettereintrag.dart';
 
-/// Vereinfachte Hive-Hilfsklasse mit CRUD-Methoden
+/// ============================================================
+/// HiveHilfe – Serviceklasse für Hive-Datenbankzugriffe
+/// ============================================================
+/// Zuständig für:
+///   - Öffnen und Zugriff auf die Hive-Box
+///   - CRUD-Operationen (Create, Read, Update, Delete)
+///   - Zentrale Verwaltung aller gespeicherten KletterEinträge
+/// ============================================================
+
 class HiveHilfe {
   static const String boxName = 'klettereintraege';
 
@@ -18,7 +26,4 @@ class HiveHilfe {
 
   /// Eintrag löschen
   static Future<void> loeschen(KletterEintrag e) async => await e.delete();
-
-  /// Alle löschen
-  static Future<void> allesLoeschen() async => await box.clear();
 }

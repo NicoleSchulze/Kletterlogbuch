@@ -66,7 +66,8 @@ lib/
 -  ````flutter pub get````
 
 ## Lokale Entwicklung
-- App starten: ````flutter run````
+- App für macOS bauen: ````flutter build macos````
+- App starten: ````flutter run -d macos````
 - Tests ausführen: ````flutter test````
 
 ## Staging & Production Setup
@@ -86,3 +87,8 @@ lib/
 - Geschäftslogik von UI trennen
 - Hive nur über Helper-Klasse HiveHilfe ansprechen
 - Tests isoliert halten und Timer/Future korrekt mocken
+
+## Aktueller Stand
+- macOS build
+- wenige Tests
+- mobile first 

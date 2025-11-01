@@ -63,36 +63,35 @@ class DashboardUI {
         ),
         IconButton(
           icon: Icon(hilfe.editierModus ? Icons.check : Icons.edit),
-          color: AppFarben.dunklesCreme,
+          color: hilfe.loeschModus ? Colors.grey : AppFarben.dunklesCreme,
           tooltip: hilfe.editierModus ? "Bearbeitung speichern" : "Einträge bearbeiten",
-          onPressed: () async {
-            if (hilfe.loeschModus) return; // Löschen hat Vorrang
-
+          onPressed: hilfe.loeschModus
+              ? null // Stift deaktiviert, wenn Löschmodus aktiv
+              : () async {
             if (hilfe.editierModus) {
-              await hilfe.speichereAenderungen(); // Speichern
+              await hilfe.speichereAenderungen(); // Änderungen speichern
             }
-
-            // Edit-Modus toggeln
             hilfe.editierModus = !hilfe.editierModus;
-            hilfe.aktualisieren(() {}); // UI aktualisieren
+            hilfe.aktualisieren(() {});
           },
         ),
         IconButton(
           icon: Icon(hilfe.loeschModus ? Icons.check : Icons.delete),
-          color: AppFarben.dunklesCreme,
-          onPressed: () {
-            if (hilfe.editierModus) return;
+          color: hilfe.editierModus ? Colors.grey : AppFarben.dunklesCreme,
+          onPressed: hilfe.editierModus
+              ? null // Mülleimer deaktiviert, wenn Editiermodus aktiv
+              : () {
             if (hilfe.loeschModus) {
-              if (hilfe.ausgewaehlteKeys.isNotEmpty)
-                hilfe.loeschenAusgewaehlte();
-              else
-                hilfe.aktualisieren(() {});
+              if (hilfe.ausgewaehlteKeys.isNotEmpty) {
+                hilfe.loeschenAusgewaehlte(); // löschen
+              } else {
+                hilfe.loeschModus = false; // Löschmodus verlassen, wenn nichts ausgewählt
+              }
             } else {
               hilfe.loeschModus = true;
               hilfe.ausgewaehlteKeys.clear();
-              hilfe.aktualisieren(() {});
             }
-            ;
+            hilfe.aktualisieren(() {});
           },
         ),
       ],

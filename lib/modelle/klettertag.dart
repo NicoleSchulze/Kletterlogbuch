@@ -21,7 +21,7 @@ class Klettertag {
     required this.gebiet,
     List<Gipfel>? gipfel,
   }) : gipfel =
-      gipfel ?? []; // Jeder Klettertag besutzt genau ein Datum + Gebiet
+      gipfel ?? []; // Jeder Klettertag benutzt genau ein Datum + Gebiet
 
   // Fügt eine neue Kletterroute einem Gipfel hinzu
   // Falls Gipfel noch nicht existiert -> automatisch erstellt

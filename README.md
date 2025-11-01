@@ -1,23 +1,18 @@
 # Kletterlogbuch
-
-Ein digitales Kletter-Logbuch für die Sächsische Schweiz – 
-<br>
-Touren einfach dokumentieren, verwalten und auswerten.
-
+Ein digitales Kletter-Logbuch für die Sächsische Schweiz – Touren einfach dokumentieren, verwalten und auswerten.
 
 ## Inhalt
 
 - [Projektstruktur](#projektstruktur)
-- [Initiales Setup](#initiales-setup)
 - [Vorraussetzungen](#vorraussetzungen)
+- [Projekt clonen](#projekt-klonen)
 - [Anhängigkeiten](#abhängigkeiten)
 - [Lokale Entwicklung](#lokale-entwicklung)
-- [Staging & Production Setup](#staging--production-setup)
-- [Best Practices](#best-practices)
-- [Hinweise](#hinweise)
+- [Hive Setup](#hive-setup)
+- [Im Terminal](#im-terminal)
+- [Aktueller Stand](#aktueller-stand)
 
 ---
-
 ## Projektstruktur
 ````
 lib/
@@ -29,38 +24,38 @@ lib/
 │   └── app_start.dart                     -> Hive-Initialisierung und runApp()
 │
 ├── screens/
-│   ├── startbildschirm.dart               -> SplashScreen
-│   ├── dashboard.dart                     -> Haupt-Dashboard
-│   └── widgets/
-│       ├── dialog_neuer_weg.dart          -> Neuer Kletterweg hinzufügen
-│       ├── dialog_filter.dart             -> Filterdialog
-│       └── helper_dashboard.dart          -> Hilfsfunktionen & Modelle fürs Dashboard
+│   ├── startbildschirm.dart               -> Startbildschirm
+│   └── dashboard                          -> Haupt-Dashboard
+│       ├── dasboard.dart
+│       ├── dashboard_dialogFilter.dart    -> Filterdialog
+│       ├── dashboard_dialogNeuerWeg.dart  -> Neuer Kletterweg hinzufügen
+│       ├── dashboard_hilfe.dart           -> Dashboard-Hilfsklasse (Logik)
+│       └── dashboard_ui.dart              -> Dashboard-UI-Komponeten
 │
-├── datenbank/
-│   ├── hive_hilfe.dart                    -> Hive Helper mit CRUD-Methoden
+├── services/
+│   └── hive_hilfe.dart                    -> Hive Helper mit CRUD-Methoden
 │
 ├── modelle/
 │   ├── klettereintrag.dart                -> Datenmodell
-│   └── klettereintrag.g.dart              -> Generierter Adapter
+│   ├── klettereintrag.g.dart              -> Generierter Adapter
+│   └── klettertag.dart                    -> Modell: Klettertag, Gipfel, Route  
 │
-└── utils/
-    └── konvertierungen.dart               -> (optional) z. B. Schwierigkeit → Römisch
+└── konstanten/
+    ├── farben.dart    
+    └── fehlermeldungen.dart       
 ````
-## Initiales Setup
-
-### Vorraussetzungen
+## Vorraussetzungen
 - Flutter SDK installiert -> https://docs.flutter.dev/get-started
+- Test Flutter Version: ````flutter --version````
 - Dart SDK (wird mit Flutter geliefert)
 - IDE wie IntelliJ oder ähnliches
 - Xcode (für IOS-Entwicklung auf macOS)
 - Git (Versionierung)
-
-
 - Prüfen, ob alles korrekt installiert: ````flutter doctor````
 
-
-### Projekt klonen
+## Projekt klonen
 - ````git clone <repository-url>````
+- ````cd <projektordner>````
 
 ## Abhängigkeiten
 -  ````flutter pub get````
@@ -70,25 +65,16 @@ lib/
 - App starten: ````flutter run -d macos````
 - Tests ausführen: ````flutter test````
 
-## Staging & Production Setup
+## Hive Setup
+- Hive wird automatisch beim Start geöffnet (app_start.dart)
+- Box-Namen: klettereintraege
 
-## Hinweise:
-- Google Fonts: müssen lokal eingebunden werden, wenn allowRuntimeFetching = false
-- Hive boxen: Vor jedem Zugriff Hive.openBox() aufrufen
-- Tests: Netzwerkzugriffe blockiert → keine echten HTTP Calls in Tests
-
-### Im Terminal
+## Im Terminal
 - Hot Reload: ````r```` 
 - Hot Restart: ````R````
 - Alle Abhängigkeiten aktualisieren: ````flutter pub upgrade````
 
-## Best Practices
-- Widgets klein und wiederverwendbar halten
-- Geschäftslogik von UI trennen
-- Hive nur über Helper-Klasse HiveHilfe ansprechen
-- Tests isoliert halten und Timer/Future korrekt mocken
-
 ## Aktueller Stand
-- macOS build
-- wenige Tests
-- mobile first 
+- MacOS build
+- Wenige Tests
+- Mobile first 

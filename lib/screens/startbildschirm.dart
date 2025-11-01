@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_kletterlogbuch/konstanten/farben.dart';
-import 'dashboard.dart';
+import 'dashboard/dashboard.dart';
 
 /// ============================================================
 /// Startbildschirm / Splash Screen
@@ -24,7 +24,10 @@ class _StartbildschirmState extends State<Startbildschirm> {
     Future.delayed(const Duration(seconds: 2), () {
       //Best Practice ???
       if (mounted) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const Dashboard()),);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const Dashboard()),
+        );
       }
     });
   }

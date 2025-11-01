@@ -1,8 +1,9 @@
 import 'package:hive/hive.dart';
 part 'klettereintrag.g.dart';
 
+/// ============================================================
 /// Modell eines Klettereintrags
-@HiveType(typeId: 0)
+/// ============================================================@HiveType(typeId: 0)
 class KletterEintrag extends HiveObject {
   @HiveField(0)
   int? id;

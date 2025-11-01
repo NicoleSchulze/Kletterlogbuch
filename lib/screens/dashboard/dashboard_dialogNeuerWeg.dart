@@ -14,15 +14,15 @@ import 'package:flutter_kletterlogbuch/modelle/klettereintrag.dart';
 /// Validierung erfolgt vor speichern
 /// ============================================================
 
-class AddKletterwegDialog extends StatefulWidget {
-  final Function(KletterEintrag) onSave;
-  const AddKletterwegDialog({super.key, required this.onSave});
+class DialogNeuerKletterweg extends StatefulWidget {
+  final Function(KletterEintrag) beimSpeichern;
+  const DialogNeuerKletterweg({super.key, required this.beimSpeichern});
 
   @override
-  State<AddKletterwegDialog> createState() => _AddKletterwegDialogState();
+  State<DialogNeuerKletterweg> createState() => _DialogNeuerKletterwegState();
 }
 
-class _AddKletterwegDialogState extends State<AddKletterwegDialog> {
+class _DialogNeuerKletterwegState extends State<DialogNeuerKletterweg> {
   // ----------------------------
   // Benutzereingaben
   // ----------------------------
@@ -33,11 +33,11 @@ class _AddKletterwegDialogState extends State<AddKletterwegDialog> {
   String schwierigkeit = "";
 
   // Fehlertexte für Validierung
-  String? datumError;
-  String? gebietError;
-  String? gipfelError;
-  String? wegError;
-  String? schwierigkeitError;
+  String? datumFehler;
+  String? gebietFehler;
+  String? gipfelFehler;
+  String? wegFehler;
+  String? schwierigkeitFehler;
 
   final TextEditingController _datumController = TextEditingController();
 
@@ -59,19 +59,19 @@ class _AddKletterwegDialogState extends State<AddKletterwegDialog> {
   // ----------------------------
   // Validierung und Speichern
   // ----------------------------
-  void validateAndSave() {
+  void validierenUndSpeichern() {
     setState(() {
-      datumError = datum.isEmpty ? FilterFehler.fehlermeldungDatum : null;
-      gebietError = gebiet.isEmpty ? FilterFehler.fehlermeldungGebiet : null;
-      gipfelError = gipfel.isEmpty ? FilterFehler.fehlermeldungGipfel : null;
-      wegError = weg.isEmpty ? FilterFehler.fehlermeldungWeg : null;
-      schwierigkeitError = schwierigkeit.isEmpty ? FilterFehler.fehlermeldungSchwierigkeit : null;
+      datumFehler = datum.isEmpty ? FilterFehler.fehlermeldungDatum : null;
+      gebietFehler = gebiet.isEmpty ? FilterFehler.fehlermeldungGebiet : null;
+      gipfelFehler = gipfel.isEmpty ? FilterFehler.fehlermeldungGipfel : null;
+      wegFehler = weg.isEmpty ? FilterFehler.fehlermeldungWeg : null;
+      schwierigkeitFehler = schwierigkeit.isEmpty ? FilterFehler.fehlermeldungSchwierigkeit : null;
     });
 
     if ([datum, gebiet, gipfel, weg, schwierigkeit].any((e) => e.isEmpty)) return;
 
     // Callback aufrufen, Dialog schließen
-    widget.onSave(
+    widget.beimSpeichern(
       KletterEintrag(
         datum: datum,
         gebiet: gebiet,
@@ -86,19 +86,19 @@ class _AddKletterwegDialogState extends State<AddKletterwegDialog> {
   // ----------------------------
   // Datumsauswahl
   // ----------------------------
-  Future<void> pickDate() async {
-    final DateTime? picked = await showDatePicker(
+  Future<void> datumWaehlen() async {
+    final DateTime? ausgewaehltesDatum = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
 
-    if (picked != null) {
+    if (ausgewaehltesDatum != null) {
       setState(() {
-        datum = "${picked.day.toString().padLeft(2, '0')}.${picked.month.toString().padLeft(2, '0')}.${picked.year}";
+        datum = "${ausgewaehltesDatum.day.toString().padLeft(2, '0')}.${ausgewaehltesDatum.month.toString().padLeft(2, '0')}.${ausgewaehltesDatum.year}";
         _datumController.text = datum;
-        datumError = null; // Fehler entfernen, sobald Datum gewählt
+        datumFehler = null; // Fehler entfernen, sobald Datum gewählt
       });
     }
   }
@@ -106,18 +106,18 @@ class _AddKletterwegDialogState extends State<AddKletterwegDialog> {
   // ----------------------------
   // Hilfsmethode: Textfelder bauen
   // ----------------------------
-  Widget buildTextField({
+  Widget baueTextFeld({
     required String label,
     required String value,
     required Function(String) onChanged,
-    required String? errorText,
-    int maxLength = 30,
-    RegExp? allowedPattern,
+    required String? fehlerText,
+    int maxLaenge = 30,
+    RegExp? erlaubtesPattern,
   }) {
     return TextField(
-      decoration: InputDecoration(labelText: label, errorText: errorText),
-      maxLength: maxLength,
-      inputFormatters: allowedPattern != null ? [FilteringTextInputFormatter.allow(allowedPattern)] : [],
+      decoration: InputDecoration(labelText: label, errorText: fehlerText),
+      maxLength: maxLaenge,
+      inputFormatters: erlaubtesPattern != null ? [FilteringTextInputFormatter.allow(erlaubtesPattern)] : [],
       buildCounter: (BuildContext context, {
         required int currentLength,
         required bool isFocused,
@@ -149,10 +149,10 @@ class _AddKletterwegDialogState extends State<AddKletterwegDialog> {
                 textAlignVertical: TextAlignVertical.center,
                 decoration: InputDecoration(
                   labelText: "Datum",
-                  errorText: datumError,
+                  errorText: datumFehler,
                   suffixIcon: const Icon(Icons.calendar_today),
                 ),
-                onTap: pickDate,
+                onTap: datumWaehlen,
               ),
             ),
             SizedBox(height: 8),
@@ -162,7 +162,7 @@ class _AddKletterwegDialogState extends State<AddKletterwegDialog> {
               height: 65,
               child: DropdownButtonFormField<String>(
                 value: gebiet.isEmpty ? null : gebiet,
-                decoration: InputDecoration(labelText: "Gebiet", errorText: gebietError),
+                decoration: InputDecoration(labelText: "Gebiet", errorText: gebietFehler),
                 items: gebieteListe.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
                 onChanged: (val) => setState(() => gebiet = val ?? ""),
               ),
@@ -170,29 +170,29 @@ class _AddKletterwegDialogState extends State<AddKletterwegDialog> {
             SizedBox(height: 8),
 
             // Gipfel
-            buildTextField(
+            baueTextFeld(
               label: "Gipfel",
               value: gipfel,
-              maxLength: 30,
-              allowedPattern: RegExp(r'[a-zA-ZäöüÄÖÜß\s]'),
-              errorText: gipfelError,
+              maxLaenge: 30,
+              erlaubtesPattern: RegExp(r'[a-zA-ZäöüÄÖÜß\s]'),
+              fehlerText: gipfelFehler,
               onChanged: (val) => setState(() {
                 gipfel = val;
-                gipfelError = val.isEmpty ? FilterFehler.fehlermeldungGipfel: null;
+                gipfelFehler = val.isEmpty ? FilterFehler.fehlermeldungGipfel: null;
               }),
             ),
             SizedBox(height: 8),
 
             // Weg
-            buildTextField(
+            baueTextFeld(
               label: "Weg",
               value: weg,
-              maxLength: 30,
-              allowedPattern: RegExp(r'[a-zA-ZäöüÄÖÜß\s\-]'),
-              errorText: wegError,
+              maxLaenge: 30,
+              erlaubtesPattern: RegExp(r'[a-zA-ZäöüÄÖÜß\s\-]'),
+              fehlerText: wegFehler,
               onChanged: (val) => setState(() {
                 weg = val;
-                wegError = val.isEmpty ? FilterFehler.fehlermeldungWeg : null;
+                wegFehler = val.isEmpty ? FilterFehler.fehlermeldungWeg : null;
               }),
             ),
             SizedBox(height: 8),
@@ -202,11 +202,11 @@ class _AddKletterwegDialogState extends State<AddKletterwegDialog> {
               height: 65,
               child: DropdownButtonFormField<String>(
                 value: schwierigkeit.isEmpty ? null : schwierigkeit,
-                decoration: InputDecoration(labelText: "Schwierigkeit", errorText: schwierigkeitError),
+                decoration: InputDecoration(labelText: "Schwierigkeit", errorText: schwierigkeitFehler),
                 items: schwierigkeitenListe.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                 onChanged: (val) => setState(() {
                   schwierigkeit = val ?? "";
-                  schwierigkeitError = null;
+                  schwierigkeitFehler = null;
                 }),
               ),
             ),
@@ -215,7 +215,7 @@ class _AddKletterwegDialogState extends State<AddKletterwegDialog> {
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text("Abbrechen")),
-        ElevatedButton(onPressed: validateAndSave, child: const Text("Speichern")),
+        ElevatedButton(onPressed: validierenUndSpeichern, child: const Text("Speichern")),
       ],
     );
   }

@@ -15,15 +15,15 @@ class HiveHilfe {
 
   static Box<KletterEintrag> get box => Hive.box<KletterEintrag>(boxName);
 
-  /// Eintrag speichern
+  // Eintrag speichern
   static Future<void> hinzufuegen(KletterEintrag e) async => await box.add(e);
 
-  /// Alle Einträge abrufen
+  // Alle Einträge abrufen
   static List<KletterEintrag> alle() => box.values.toList();
 
-  /// Eintrag aktualisieren
+  // Eintrag aktualisieren
   static Future<void> aktualisieren(KletterEintrag e) async => await e.save();
 
-  /// Eintrag löschen
+  // Eintrag löschen
   static Future<void> loeschen(KletterEintrag e) async => await e.delete();
 }

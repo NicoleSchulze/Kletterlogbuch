@@ -20,19 +20,27 @@ class Klettertag {
     required this.datum,
     required this.gebiet,
     List<Gipfel>? gipfel,
-  }) : gipfel = gipfel ?? []; // Jeder Klettertag besutzt genau ein Datum + Gebiet
+  }) : gipfel =
+      gipfel ?? []; // Jeder Klettertag besutzt genau ein Datum + Gebiet
 
   // Fügt eine neue Kletterroute einem Gipfel hinzu
   // Falls Gipfel noch nicht existiert -> automatisch erstellt
-  void addKletterroute(String gipfelName, String kletterrouteName, String schwierigkeit) {
-    final existingGipfel = gipfel.firstWhere((g) => g.name == gipfelName,
+  void hinzufuegenKletterroute(
+    String gipfelName,
+    String kletterrouteName,
+    String schwierigkeit,
+  ) {
+    final existingGipfel = gipfel.firstWhere(
+      (g) => g.name == gipfelName,
       orElse: () {
         final newGipfel = Gipfel(name: gipfelName);
         gipfel.add(newGipfel);
         return newGipfel;
       },
     );
-    existingGipfel.kletterrouten.add(Kletterroute(name: kletterrouteName, schwierigkeit: schwierigkeit));
+    existingGipfel.kletterrouten.add(
+      Kletterroute(name: kletterrouteName, schwierigkeit: schwierigkeit),
+    );
   }
 }
 
@@ -42,7 +50,8 @@ class Gipfel {
   final List<Kletterroute> kletterrouten;
 
   // Konstruktor für Gipfel
-  Gipfel({required this.name, List<Kletterroute>? routen}) : kletterrouten = routen ?? [];
+  Gipfel({required this.name, List<Kletterroute>? routen})
+    : kletterrouten = routen ?? [];
 }
 
 // Zeigt eine einzelne Kletterroute
@@ -82,10 +91,14 @@ List<Klettertag> gruppiereNachDatum(List<KletterEintrag> eintraege) {
       var existing = gipfelListe.where((g) => g.name == e.gipfel).toList();
       if (existing.isEmpty) {
         final newGipfel = Gipfel(name: e.gipfel);
-        newGipfel.kletterrouten.add(Kletterroute(name: e.weg, schwierigkeit: e.schwierigkeit),);
+        newGipfel.kletterrouten.add(
+          Kletterroute(name: e.weg, schwierigkeit: e.schwierigkeit),
+        );
         gipfelListe.add(newGipfel);
       } else {
-        existing.first.kletterrouten.add(Kletterroute(name: e.weg, schwierigkeit: e.schwierigkeit),);
+        existing.first.kletterrouten.add(
+          Kletterroute(name: e.weg, schwierigkeit: e.schwierigkeit),
+        );
       }
     }
     // Klettertag für dieses Datum erstellen

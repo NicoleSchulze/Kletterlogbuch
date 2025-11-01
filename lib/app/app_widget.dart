@@ -4,8 +4,8 @@ import 'package:flutter_kletterlogbuch/screens/startbildschirm.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 /// Haupt-Widget der App mit Theme und Startbildschirm
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MeineApp extends StatelessWidget {
+  const MeineApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
       title: 'Kletterlogbuch',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: AppFarben.primaerygruen),
+        colorScheme: ColorScheme.fromSeed(seedColor: AppFarben.primaeresgruen),
         useMaterial3: true,
       ),
       localizationsDelegates: const [

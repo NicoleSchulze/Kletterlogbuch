@@ -12,12 +12,12 @@ import 'package:flutter_kletterlogbuch/konstanten/fehlermeldungen.dart';
 
 class KletterwegEinzelFilterDialog extends StatefulWidget {
   final String filterKategorie;
-  final Function(Map<String, dynamic>) onApply;
+  final Function(Map<String, dynamic>) beimAnwenden;
 
   const KletterwegEinzelFilterDialog({
     super.key,
     required this.filterKategorie,
-    required this.onApply,
+    required this.beimAnwenden,
   });
 
   @override
@@ -34,11 +34,11 @@ class _KletterwegEinzelFilterDialogState extends State<KletterwegEinzelFilterDia
   final TextEditingController _datumController = TextEditingController();
 
   // Fehlertexte für Validierung
-  String? datumError;
-  String? gebietError;
-  String? gipfelError;
-  String? wegError;
-  String? schwierigkeitError;
+  String? datumFehler;
+  String? gebietFehler;
+  String? gipfelFehler;
+  String? wegFehler;
+  String? schwierigkeitFehler;
 
   // ----------------------------
   // Auswahlmöglichkeiten
@@ -57,21 +57,21 @@ class _KletterwegEinzelFilterDialogState extends State<KletterwegEinzelFilterDia
   // ----------------------------
   // Datumsauswahl
   // ----------------------------
-  Future<void> pickDate() async {
-    final DateTime? picked = await showDatePicker(
+  Future<void> datumWaehlen() async {
+    final DateTime? ausgewaehltesDatum = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) {
+    if (ausgewaehltesDatum != null) {
       setState(() {
         datum =
-        "${picked.day.toString().padLeft(2, '0')}.${picked.month
+        "${ausgewaehltesDatum.day.toString().padLeft(2, '0')}.${ausgewaehltesDatum.month
             .toString()
-            .padLeft(2, '0')}.${picked.year}";
+            .padLeft(2, '0')}.${ausgewaehltesDatum.year}";
         _datumController.text = datum!;
-        datumError = null; // Fehler entfernen, sobald Datum gewählt
+        datumFehler = null; // Fehler entfernen, sobald Datum gewählt
       });
     }
   }
@@ -79,7 +79,7 @@ class _KletterwegEinzelFilterDialogState extends State<KletterwegEinzelFilterDia
   // ----------------------------
   // Filterfeld bauen
   // ----------------------------
-  Widget buildFilterField() {
+  Widget baueFilterFeld() {
     switch (widget.filterKategorie) {
       case "datum":
         return TextField(
@@ -88,9 +88,9 @@ class _KletterwegEinzelFilterDialogState extends State<KletterwegEinzelFilterDia
           decoration: InputDecoration(
             labelText: "Datum",
             suffixIcon: const Icon(Icons.calendar_today),
-            errorText: datumError,
+            errorText: datumFehler,
           ),
-          onTap: pickDate,
+          onTap: datumWaehlen,
         );
 
       case "gebiet":
@@ -98,14 +98,14 @@ class _KletterwegEinzelFilterDialogState extends State<KletterwegEinzelFilterDia
           value: gebiet,
           decoration: InputDecoration(
             labelText: "Gebiet",
-            errorText: gebietError,
+            errorText: gebietFehler,
           ),
           items: gebieteListe
               .map((g) => DropdownMenuItem(value: g, child: Text(g)))
               .toList(),
           onChanged: (val) => setState(() {
             gebiet = val;
-            gebietError = null;
+            gebietFehler = null;
           }),
         );
 
@@ -114,14 +114,14 @@ class _KletterwegEinzelFilterDialogState extends State<KletterwegEinzelFilterDia
           value: schwierigkeit,
           decoration: InputDecoration(
             labelText: "Schwierigkeit",
-            errorText: schwierigkeitError,
+            errorText: schwierigkeitFehler,
           ),
           items: schwierigkeitenListe
               .map((s) => DropdownMenuItem(value: s, child: Text(s)))
               .toList(),
           onChanged: (val) => setState(() {
             schwierigkeit = val;
-            schwierigkeitError = null;
+            schwierigkeitFehler = null;
           }),
         );
 
@@ -130,11 +130,11 @@ class _KletterwegEinzelFilterDialogState extends State<KletterwegEinzelFilterDia
           maxLength: 30,
           decoration: InputDecoration(
             labelText: "Gipfel",
-            errorText: gipfelError,
+            errorText: gipfelFehler,
           ),
           onChanged: (val) => setState(() {
             gipfel = val;
-            gipfelError = val.isEmpty ? FilterFehler.fehlermeldungGipfel : null;
+            gipfelFehler = val.isEmpty ? FilterFehler.fehlermeldungGipfel : null;
           }),
         );
 
@@ -143,11 +143,11 @@ class _KletterwegEinzelFilterDialogState extends State<KletterwegEinzelFilterDia
           maxLength: 30,
           decoration: InputDecoration(
             labelText: "Weg",
-            errorText: wegError,
+            errorText: wegFehler,
           ),
           onChanged: (val) => setState(() {
             weg = val;
-            wegError = val.isEmpty ? FilterFehler.fehlermeldungWeg : null;
+            wegFehler = val.isEmpty ? FilterFehler.fehlermeldungWeg : null;
           }),
         );
 
@@ -163,7 +163,7 @@ class _KletterwegEinzelFilterDialogState extends State<KletterwegEinzelFilterDia
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text("Filter auswählen"),
-      content: SingleChildScrollView(child: buildFilterField()),
+      content: SingleChildScrollView(child: baueFilterFeld()),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -173,39 +173,39 @@ class _KletterwegEinzelFilterDialogState extends State<KletterwegEinzelFilterDia
           onPressed: () {
             setState(() {
               // Fehler zurücksetzen
-              datumError =
-                  gebietError = gipfelError = wegError = schwierigkeitError = null;
+              datumFehler =
+                  gebietFehler = gipfelFehler = wegFehler = schwierigkeitFehler = null;
 
               switch (widget.filterKategorie) {
                 case "datum":
-                  if (datum == null || datum!.isEmpty) datumError = FilterFehler.fehlermeldungDatum;
+                  if (datum == null || datum!.isEmpty) datumFehler = FilterFehler.fehlermeldungDatum;
                   break;
                 case "gebiet":
-                  if (gebiet == null || gebiet!.isEmpty) gebietError = FilterFehler.fehlermeldungGebiet;
+                  if (gebiet == null || gebiet!.isEmpty) gebietFehler = FilterFehler.fehlermeldungGebiet;
                   break;
                 case "gipfel":
-                  if (gipfel == null || gipfel!.isEmpty) gipfelError = FilterFehler.fehlermeldungGipfel;
+                  if (gipfel == null || gipfel!.isEmpty) gipfelFehler = FilterFehler.fehlermeldungGipfel;
                   break;
                 case "weg":
-                  if (weg == null || weg!.isEmpty) wegError = FilterFehler.fehlermeldungWeg;
+                  if (weg == null || weg!.isEmpty) wegFehler = FilterFehler.fehlermeldungWeg;
                   break;
                 case "schwierigkeit":
-                  if (schwierigkeit == null || schwierigkeit!.isEmpty) schwierigkeitError = FilterFehler.fehlermeldungSchwierigkeit;
+                  if (schwierigkeit == null || schwierigkeit!.isEmpty) schwierigkeitFehler = FilterFehler.fehlermeldungSchwierigkeit;
                   break;
               }
             });
 
             // Wenn Fehler vorhanden → abbrechen
-            if (datumError != null ||
-                gebietError != null ||
-                gipfelError != null ||
-                wegError != null ||
-                schwierigkeitError != null) {
+            if (datumFehler != null ||
+                gebietFehler != null ||
+                gipfelFehler != null ||
+                wegFehler != null ||
+                schwierigkeitFehler != null) {
               return;
             }
 
             // Filter anwenden
-            widget.onApply({
+            widget.beimAnwenden({
               "datum": datum,
               "gebiet": gebiet,
               "gipfel": gipfel,

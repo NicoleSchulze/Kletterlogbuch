@@ -14,5 +14,5 @@ Future<void> starteApp() async {
   // Box öffnen
   await Hive.openBox<KletterEintrag>('klettereintraege');
   // App starten
-  runApp(const MyApp());
+  runApp(const MeineApp());
 }
